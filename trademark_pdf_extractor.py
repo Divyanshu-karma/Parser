@@ -413,7 +413,7 @@ def forward_json_to_server(data: dict):
     """
     Sends extracted JSON to another backend server.
     """
-    TARGET_API = "https://your-second-backend.com/process"
+    TARGET_API = "https://divya-nshu99-pk.hf.space/classify"
 
     try:
         response = requests.post(
@@ -455,12 +455,18 @@ async def extract_pdf(
     try:
         
         result = processor.process_pdf(tmp_path)
-        # send json to second backend
+
+        classes = result.get("classes", [])
+        class_number = classes[0] if classes else None
+
         payload = {
-            "class_number": result.get("classes", []),
-            "identification": result.get("identification_text", "")
+            "class_number": class_number,
+            "identification": result.get("identification_text", "").replace("\n", " ")
         }
-        background_tasks.add_task(forward_json_to_server, payload)
+
+        classification = forward_json_to_server(payload)
+
+        result["classification_result"] = classification
 # -----------------------------
 # Save JSON output
 # -----------------------------
@@ -506,4 +512,5 @@ def version():
         "service": "trademark_pdf_extractor",
         "version": "1.0"
     }
+
 
