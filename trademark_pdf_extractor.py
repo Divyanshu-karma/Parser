@@ -551,7 +551,7 @@ async def extract_pdf(
 
         serial = result.get("serial_number", f"tm_{int(time.time())}")
 
-         = f"{serial}_mark_analysis.json"
+        mark_filename = f"{serial}_mark_analysis.json"
         mark_output_path = os.path.join(TM_OUTPUT_DIR, mark_filename)
 
         with open(mark_output_path, "w", encoding="utf-8") as f:
@@ -614,6 +614,7 @@ def version():
         "service": "trademark_pdf_extractor",
         "version": "1.0"
     }
+
 
 
 
