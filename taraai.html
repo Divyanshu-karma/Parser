@@ -735,6 +735,94 @@ function buildExtractionHtml(data) {
     html += `</div></div>`;
   }
 
+
+  /* ── 7. Mark Conflict Analysis ── */
+// if (data.mark_analysis && Array.isArray(data.mark_analysis) && data.mark_analysis.length) {
+
+if (data.mark_analysis && Array.isArray(data.mark_analysis) && data.mark_analysis.length && !data.mark_analysis[0].error) {
+  const riskOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+  const sorted = [...data.mark_analysis].sort((a, b) =>
+    (riskOrder[a.risk] ?? 3) - (riskOrder[b.risk] ?? 3)
+  );
+
+  const riskCounts = { HIGH: 0, MEDIUM: 0, LOW: 0 };
+  sorted.forEach(m => { if (riskCounts[m.risk] != null) riskCounts[m.risk]++; });
+
+  const overallRisk = riskCounts.HIGH > 0 ? 'HIGH' :
+                      riskCounts.MEDIUM > 0 ? 'MEDIUM' : 'LOW';
+  const overallCls  = overallRisk === 'HIGH' ? 'risk-high' :
+                      overallRisk === 'MEDIUM' ? 'risk-medium' : 'risk-low';
+  const overallIcon = overallRisk === 'HIGH' ? '⚠' :
+                      overallRisk === 'MEDIUM' ? '◆' : '✓';
+
+  html += `
+  <div class="extract-card" style="margin-top:8px;">
+    <div class="extract-card-header" style="justify-content:space-between;">
+      <span class="extract-card-title">⚖️ Conflicting Marks Found (${sorted.length})</span>
+      <span class="risk-badge ${overallCls}">${overallIcon} ${overallRisk} OVERALL</span>
+    </div>
+    <div class="extract-card-body" style="padding:0;">
+
+      <!-- Summary pills -->
+      <div style="display:flex;gap:8px;padding:10px 14px 8px;border-bottom:1px solid var(--fog);flex-wrap:wrap;">
+        ${riskCounts.HIGH   ? `<span class="risk-badge risk-high"  >⚠ ${riskCounts.HIGH} High</span>`   : ''}
+        ${riskCounts.MEDIUM ? `<span class="risk-badge risk-medium">◆ ${riskCounts.MEDIUM} Medium</span>` : ''}
+        ${riskCounts.LOW    ? `<span class="risk-badge risk-low"   >✓ ${riskCounts.LOW} Low</span>`    : ''}
+        <span style="margin-left:auto;font-size:11px;color:var(--stone-400);align-self:center;">
+          Applied mark: <strong style="color:var(--ink);">${escHtml(sorted[0].applied_mark || '—')}</strong>
+        </span>
+      </div>
+
+      <!-- Conflict rows -->
+      ${sorted.map((item, idx) => {
+        const rCls  = item.risk === 'HIGH'   ? 'risk-high'   :
+                      item.risk === 'MEDIUM' ? 'risk-medium' : 'risk-low';
+        const rIcon = item.risk === 'HIGH' ? '⚠' : item.risk === 'MEDIUM' ? '◆' : '✓';
+        const scorePct = Math.round((item.score || 0) * 100);
+        const barColor = item.risk === 'HIGH'   ? '#ef4444' :
+                         item.risk === 'MEDIUM' ? '#f59e0b' : '#22c55e';
+
+        return `
+        <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;
+                    border-bottom:1px solid var(--fog);${idx % 2 === 1 ? 'background:var(--jade-50);' : ''}">
+
+          <!-- Rank bubble -->
+          <div style="width:24px;height:24px;border-radius:50%;background:var(--fog);
+                      display:flex;align-items:center;justify-content:center;
+                      font-size:10px;font-weight:700;color:var(--stone-600);flex-shrink:0;margin-top:2px;">
+            ${idx + 1}
+          </div>
+
+          <!-- Main content -->
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+              <strong style="font-size:13px;color:var(--ink);">${escHtml(item.conflicting_mark || '—')}</strong>
+              <span class="risk-badge ${rCls}" style="font-size:10px;padding:2px 7px;">
+                ${rIcon} ${escHtml(item.risk || '—')}
+              </span>
+              <code style="font-size:10.5px;margin-left:auto;">#${escHtml(String(item.serial || '—'))}</code>
+            </div>
+
+            <!-- Similarity score bar -->
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+              <span style="font-size:10px;color:var(--stone-400);width:58px;flex-shrink:0;">Similarity</span>
+              <div style="flex:1;max-width:140px;height:5px;background:var(--fog);border-radius:3px;overflow:hidden;">
+                <div style="width:${scorePct}%;height:100%;background:${barColor};border-radius:3px;"></div>
+              </div>
+              <span style="font-size:11px;font-weight:600;color:var(--stone-600);">${scorePct}%</span>
+            </div>
+
+            <!-- Explanation -->
+            <p style="font-size:12px;color:var(--stone-400);margin:0;line-height:1.5;">
+              ${escHtml(item.explanation || '')}
+            </p>
+          </div>
+        </div>`;
+      }).join('')}
+
+    </div>
+  </div>`;
+}
   /* ── 7. Footer ── */
   if (data.stored_json_path) {
     html += `<p style="font-size:11px;color:var(--stone-400);margin-top:10px;">Full JSON saved → <code>${escHtml(data.stored_json_path)}</code></p>`;
@@ -836,6 +924,9 @@ function sendMessage() {
         `Classes: ${(data.classes||[]).join(', ')||'None'}`,
         classif ? `Assessment: ${classif.claimedClassStatus} (Suggested: ${classif.suggestedClass})` : '',
         data.identification_text ? `Goods/Services: ${data.identification_text.slice(0,200)}` : '',
+        data.mark_analysis?.length && !data.mark_analysis[0].error
+          ? `Conflicting Marks: ${data.mark_analysis.map(m => m.conflicting_mark).join(', ')}`
+          : '',
       ].filter(Boolean).join('\n');
 
       const aiMsg = { id:uid(), role:'ai', text:plainText, richHtml, ts:Date.now() };
