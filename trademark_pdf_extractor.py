@@ -556,7 +556,7 @@ async def extract_pdf(
 
         with open(mark_output_path, "w", encoding="utf-8") as f:
             json.dump(mark_response, f, indent=2, ensure_ascii=False)
-        
+        result["mark_analysis"] = mark_response
 
 
        
@@ -614,6 +614,7 @@ def version():
         "service": "trademark_pdf_extractor",
         "version": "1.0"
     }
+
 
 
 
