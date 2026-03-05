@@ -68,7 +68,7 @@ APPLICANT_RE = re.compile(
 )
 
 MARK_RE = re.compile(
-    r'^\s*Mark[:\s\-]+(.+)$',
+    r'^\s*\*?MARK\s+(?!INFORMATION|STATEMENT)([^\n]+)',
     re.I | re.M
 )
 
@@ -614,6 +614,7 @@ def version():
         "service": "trademark_pdf_extractor",
         "version": "1.0"
     }
+
 
 
 
