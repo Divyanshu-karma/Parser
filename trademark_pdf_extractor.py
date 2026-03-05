@@ -408,26 +408,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 processor = PDFProcessor()
-
 def forward_json_to_server(data: dict):
     """
-    Sends extracted JSON to another backend server.
+    Sends extracted JSON to the Hugging Face classification backend
+    and returns the classifier response.
     """
+
     TARGET_API = "https://divya-nshu99-pk.hf.space/classify"
 
     try:
         response = requests.post(
             TARGET_API,
             json=data,
-            timeout=10
+            timeout=30
         )
 
-        return {
-            "status": "sent",
-            "status_code": response.status_code
-        }
+        response.raise_for_status()
 
-    except Exception as e:
+        return response.json()
+
+    except requests.exceptions.RequestException as e:
         return {
             "status": "failed",
             "error": str(e)
@@ -512,5 +512,6 @@ def version():
         "service": "trademark_pdf_extractor",
         "version": "1.0"
     }
+
 
 
