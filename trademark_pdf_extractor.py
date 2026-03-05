@@ -3,7 +3,7 @@
 """
 Ultimate Trademark PDF Analysis System (Improved)
 """
-
+import asyncio
 import os
 import re
 import time
@@ -432,6 +432,65 @@ def forward_json_to_server(data: dict):
             "status": "failed",
             "error": str(e)
         }
+
+def forward_mark_text_to_server(mark_text: str):
+    """
+    Sends trademark mark text to HuggingFace mark conflict backend
+    and returns the response exactly as received.
+    """
+
+    MARK_API = "https://divya-nshu99-tmconflict.hf.space/search"
+
+    try:
+        response = requests.post(
+            MARK_API,
+            json={"mark_text": mark_text},
+            timeout=30
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        # Ensure we return exactly the list returned by HF backend
+        if isinstance(data, list):
+            return data
+
+        # fallback safety
+        return []
+
+    except requests.exceptions.RequestException as e:
+        return [{
+            "status": "failed",
+            "error": str(e)
+        }]
+# def forward_mark_text_to_server(mark_text: str):
+#     """
+#     Sends trademark mark text to another backend service
+#     and returns its response.
+#     """
+
+#     MARK_API = "https://divya-nshu99-tmconflict.hf.space/search"
+
+#     try:
+#         response = requests.post(
+#             MARK_API,
+#             json={"mark_text": mark_text},
+#             timeout=30
+#         )
+
+#         response.raise_for_status()
+#         data = response.json()
+#         if not isinstance(data, list):
+#             return []
+
+#         return data
+
+#     except requests.exceptions.RequestException as e:
+#         return [{
+#             "status": "failed",
+#             "error": str(e)
+#         }]
 @app.post("/extract")
 
 async def extract_pdf(
@@ -455,7 +514,7 @@ async def extract_pdf(
     try:
         
         result = processor.process_pdf(tmp_path)
-
+        mark_text = result.get("mark_text", "")
         classes = result.get("classes", [])
         class_number = classes[0] if classes else None
 
@@ -464,9 +523,43 @@ async def extract_pdf(
             "identification": result.get("identification_text", "").replace("\n", " ")
         }
 
-        classification = forward_json_to_server(payload)
+        
+      
+        # -----------------------------
+# Run BOTH backend calls concurrently
+# -----------------------------
 
+        classification_task = asyncio.create_task(
+            call_classification_backend(payload)
+        )
+
+        if mark_text.strip():
+            mark_task = asyncio.create_task(call_mark_backend(mark_text))
+        else:
+            mark_task = asyncio.create_task(asyncio.sleep(0, result=[]))
+
+# first wait for classification
+        classification = await classification_task
         result["classification_result"] = classification
+
+# then wait for mark analysis
+        mark_response = await mark_task
+
+# -----------------------------
+# Save mark analysis separately
+# -----------------------------
+
+        serial = result.get("serial_number", f"tm_{int(time.time())}")
+
+        mark_filename = f"{serial}_mark_analysis.json"
+        mark_output_path = os.path.join(TM_OUTPUT_DIR, mark_filename)
+
+        with open(mark_output_path, "w", encoding="utf-8") as f:
+            json.dump(mark_response, f, indent=2, ensure_ascii=False)
+
+
+
+       
 # -----------------------------
 # Save JSON output
 # -----------------------------
@@ -498,6 +591,15 @@ async def extract_pdf(
 
 
     return JSONResponse(result)
+async def call_classification_backend(payload):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, forward_json_to_server, payload)
+
+
+async def call_mark_backend(mark_text):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, forward_mark_text_to_server, mark_text)    
+
 @app.get("/")
 def serve_frontend():
     return FileResponse(
@@ -512,6 +614,7 @@ def version():
         "service": "trademark_pdf_extractor",
         "version": "1.0"
     }
+
 
 
 
