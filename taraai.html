@@ -735,6 +735,42 @@ function buildExtractionHtml(data) {
     html += `</div></div>`;
   }
 
+   const ma = data.mark_analysis;
+  let debugMsg = '';
+
+  if (ma === undefined || ma === null) {
+    debugMsg = '❌ <strong>mark_analysis</strong> key is missing entirely from backend response. ' +
+               'Confirm <code>result["mark_analysis"] = mark_response</code> exists in backend.';
+  } else if (!Array.isArray(ma)) {
+    debugMsg = `❌ <strong>mark_analysis</strong> is not an array — received: <code>${escHtml(JSON.stringify(ma).slice(0,200))}</code>`;
+  } else if (ma.length === 0) {
+    debugMsg = '⚠️ <strong>mark_analysis</strong> is empty <code>[]</code> — ' +
+               'mark backend returned no results. Possibly mark_text was empty in the PDF.';
+  } else if (ma[0].error) {
+    debugMsg = `❌ mark backend returned an error: <code>${escHtml(ma[0].error)}</code><br>` +
+               `Full: <code>${escHtml(JSON.stringify(ma[0]).slice(0,300))}</code>`;
+  } else if (ma[0].status === 'failed') {
+    debugMsg = `❌ mark backend call failed: <code>${escHtml(JSON.stringify(ma[0]).slice(0,300))}</code>`;
+  }
+
+  if (debugMsg) {
+    html += `
+    <div class="extract-card" style="margin-top:8px;border-color:#fca5a5;">
+      <div class="extract-card-header" style="background:#fee2e2;">
+        <span class="extract-card-title" style="color:#b91c1c;">⚖️ Conflict Analysis — Debug</span>
+      </div>
+      <div class="extract-card-body">
+        <p style="font-size:12.5px;line-height:1.7;color:var(--stone-600);">${debugMsg}</p>
+        <details style="margin-top:10px;">
+          <summary style="font-size:11px;color:var(--stone-400);cursor:pointer;">
+            Show raw mark_analysis value
+          </summary>
+          <pre style="margin-top:8px;font-size:11px;background:var(--mist);padding:10px;
+                      border-radius:6px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;">${escHtml(JSON.stringify(ma ?? null, null, 2))}</pre>
+        </details>
+      </div>
+    </div>`;
+  }
 
   /* ── 7. Mark Conflict Analysis ── */
 // if (data.mark_analysis && Array.isArray(data.mark_analysis) && data.mark_analysis.length) {
