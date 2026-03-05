@@ -456,8 +456,11 @@ async def extract_pdf(
         
         result = processor.process_pdf(tmp_path)
         # send json to second backend
-        background_tasks.add_task(forward_json_to_server, result)
-
+        payload = {
+            "class_number": result.get("classes", []),
+            "identification": result.get("identification_text", "")
+        }
+        background_tasks.add_task(forward_json_to_server, payload)
 # -----------------------------
 # Save JSON output
 # -----------------------------
@@ -503,3 +506,4 @@ def version():
         "service": "trademark_pdf_extractor",
         "version": "1.0"
     }
+
