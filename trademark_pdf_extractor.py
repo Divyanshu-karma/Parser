@@ -444,7 +444,7 @@ def forward_mark_text_to_server(mark_text: str):
     try:
         response = requests.post(
             MARK_API,
-            json={"mark_text": mark_text},
+            json={"mark_text": mark_text, "filing_status": "active"},
             timeout=30
         )
 
@@ -614,6 +614,7 @@ def version():
         "service": "trademark_pdf_extractor",
         "version": "1.0"
     }
+
 
 
 
