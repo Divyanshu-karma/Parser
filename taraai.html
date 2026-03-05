@@ -8,920 +8,237 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
 <style>
-  /* ─── Design Tokens ─────────────────────────────────────────── */
   :root {
-    --jade-900:   #0d2b1f;
-    --jade-800:   #163d2c;
-    --jade-700:   #1e5239;
-    --jade-600:   #27664a;
-    --jade-500:   #2f7a59;
-    --jade-400:   #4a9b76;
-    --jade-300:   #72bc9a;
-    --jade-200:   #aad9bf;
-    --jade-100:   #d4f0e1;
-    --jade-50:    #edf8f2;
+    --jade-900:#0d2b1f;--jade-800:#163d2c;--jade-700:#1e5239;--jade-600:#27664a;
+    --jade-500:#2f7a59;--jade-400:#4a9b76;--jade-300:#72bc9a;--jade-200:#aad9bf;
+    --jade-100:#d4f0e1;--jade-50:#edf8f2;
+    --cream:#f8f6f1;--paper:#ffffff;--mist:#f2f0eb;--fog:#e8e6e1;
+    --stone-200:#d4d2cd;--stone-400:#9b9991;--stone-600:#6b6960;--stone-800:#2e2d2a;--ink:#1a1917;
+    --sidebar-w:280px;--radius-sm:6px;--radius-md:12px;--radius-lg:18px;--radius-xl:24px;
+    --shadow-xs:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
+    --shadow-sm:0 2px 8px rgba(0,0,0,0.08),0 1px 3px rgba(0,0,0,0.05);
+    --shadow-md:0 4px 16px rgba(0,0,0,0.10),0 2px 6px rgba(0,0,0,0.06);
+    --shadow-lg:0 8px 32px rgba(0,0,0,0.12),0 4px 12px rgba(0,0,0,0.08);
+    --font-sans:'DM Sans',sans-serif;--font-serif:'Lora',serif;
+    --anim-fast:150ms cubic-bezier(0.4,0,0.2,1);--anim-mid:280ms cubic-bezier(0.4,0,0.2,1);
+    --anim-slow:420ms cubic-bezier(0.4,0,0.2,1);
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;overflow:hidden;}
+  body{font-family:var(--font-sans);font-size:14px;color:var(--ink);background:var(--cream);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
+  button{cursor:pointer;border:none;background:none;font-family:inherit;}
+  input,textarea{font-family:inherit;}
+  a{text-decoration:none;color:inherit;}
+  .app{display:flex;height:100vh;overflow:hidden;}
+  .sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);height:100%;background:var(--jade-900);display:flex;flex-direction:column;overflow:hidden;position:relative;z-index:10;}
+  .sidebar::after{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.015'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");pointer-events:none;}
+  .sidebar-header{padding:20px 16px 14px;border-bottom:1px solid rgba(255,255,255,0.07);}
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+  .brand-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--jade-400),var(--jade-600));border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(47,122,89,0.4);}
+  .brand-icon svg{width:18px;height:18px;}
+  .brand-name{font-family:var(--font-serif);font-size:18px;font-weight:600;color:#fff;letter-spacing:-0.02em;line-height:1;}
+  .brand-sub{font-size:10px;color:var(--jade-300);font-weight:400;letter-spacing:0.06em;text-transform:uppercase;margin-top:1px;}
+  .new-chat-btn{width:100%;display:flex;align-items:center;gap:8px;padding:9px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.09);border-radius:var(--radius-sm);color:rgba(255,255,255,0.85);font-size:13px;font-weight:500;transition:background var(--anim-fast),border-color var(--anim-fast);}
+  .new-chat-btn:hover{background:rgba(255,255,255,0.11);border-color:rgba(255,255,255,0.15);}
+  .new-chat-btn svg{width:15px;height:15px;opacity:0.7;flex-shrink:0;}
+  .sidebar-section-label{padding:16px 16px 6px;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--jade-300);opacity:0.7;}
+  .chat-history{flex:1;overflow-y:auto;padding:0 8px 8px;}
+  .chat-history::-webkit-scrollbar{width:4px;}
+  .chat-history::-webkit-scrollbar-track{background:transparent;}
+  .chat-history::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:4px;}
+  .history-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:var(--radius-sm);cursor:pointer;transition:background var(--anim-fast);position:relative;}
+  .history-item:hover{background:rgba(255,255,255,0.06);}
+  .history-item.active{background:rgba(255,255,255,0.10);}
+  .history-item-icon{width:28px;height:28px;background:rgba(255,255,255,0.06);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .history-item-icon svg{width:13px;height:13px;color:var(--jade-300);}
+  .history-item-text{flex:1;min-width:0;}
+  .history-item-title{font-size:12.5px;font-weight:500;color:rgba(255,255,255,0.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .history-item-date{font-size:10.5px;color:rgba(255,255,255,0.35);margin-top:1px;}
+  .history-item-del{width:22px;height:22px;border-radius:4px;display:none;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);transition:color var(--anim-fast),background var(--anim-fast);flex-shrink:0;}
+  .history-item:hover .history-item-del{display:flex;}
+  .history-item-del:hover{color:#ff7b7b;background:rgba(255,100,100,0.12);}
+  .history-item-del svg{width:12px;height:12px;}
+  .history-empty{padding:20px 16px;text-align:center;color:rgba(255,255,255,0.25);font-size:12px;line-height:1.6;}
+  .sidebar-footer{padding:12px 16px 16px;border-top:1px solid rgba(255,255,255,0.07);}
+  .user-info{display:flex;align-items:center;gap:10px;}
+  .user-avatar{width:30px;height:30px;background:linear-gradient(135deg,var(--jade-500),var(--jade-700));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;flex-shrink:0;}
+  .user-details{flex:1;min-width:0;}
+  .user-name{font-size:12.5px;font-weight:500;color:rgba(255,255,255,0.8);}
+  .user-role{font-size:10.5px;color:rgba(255,255,255,0.35);}
+  .main{flex:1;display:flex;flex-direction:column;min-width:0;height:100%;background:var(--paper);position:relative;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:56px;border-bottom:1px solid var(--fog);background:var(--paper);flex-shrink:0;z-index:5;}
+  .topbar-left{display:flex;align-items:center;gap:12px;}
+  .session-badge{display:flex;align-items:center;gap:6px;padding:4px 10px;background:var(--jade-50);border:1px solid var(--jade-200);border-radius:20px;font-size:12px;font-weight:500;color:var(--jade-700);}
+  .session-badge .dot{width:6px;height:6px;background:var(--jade-500);border-radius:50%;animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+  .topbar-title{font-size:14px;font-weight:500;color:var(--stone-600);}
+  .topbar-right{display:flex;align-items:center;gap:8px;}
+  .icon-btn{width:34px;height:34px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--stone-400);transition:background var(--anim-fast),color var(--anim-fast);}
+  .icon-btn:hover{background:var(--mist);color:var(--stone-600);}
+  .icon-btn svg{width:16px;height:16px;}
+  .chat-window{flex:1;overflow-y:auto;padding:0;scroll-behavior:smooth;}
+  .chat-window::-webkit-scrollbar{width:5px;}
+  .chat-window::-webkit-scrollbar-track{background:transparent;}
+  .chat-window::-webkit-scrollbar-thumb{background:var(--fog);border-radius:4px;}
+  .chat-window::-webkit-scrollbar-thumb:hover{background:var(--stone-200);}
+  .welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 40px;height:100%;min-height:400px;animation:fadeUp 0.5s ease both;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+  .welcome-icon{width:64px;height:64px;background:linear-gradient(135deg,var(--jade-400),var(--jade-700));border-radius:var(--radius-xl);display:flex;align-items:center;justify-content:center;margin-bottom:20px;box-shadow:0 8px 24px rgba(47,122,89,0.25),0 2px 8px rgba(47,122,89,0.15);}
+  .welcome-icon svg{width:30px;height:30px;color:#fff;}
+  .welcome-title{font-family:var(--font-serif);font-size:26px;font-weight:600;color:var(--ink);margin-bottom:8px;letter-spacing:-0.02em;}
+  .welcome-sub{font-size:14px;color:var(--stone-400);text-align:center;max-width:400px;line-height:1.65;margin-bottom:36px;}
+  .welcome-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%;max-width:700px;}
+  .welcome-card{background:var(--mist);border:1px solid var(--fog);border-radius:var(--radius-md);padding:16px;cursor:pointer;transition:all var(--anim-mid);text-align:left;}
+  .welcome-card:hover{background:var(--jade-50);border-color:var(--jade-200);transform:translateY(-1px);box-shadow:var(--shadow-sm);}
+  .welcome-card-icon{font-size:20px;margin-bottom:8px;display:block;}
+  .welcome-card-text{font-size:12.5px;color:var(--stone-600);line-height:1.5;font-weight:400;}
+  .welcome-card-text strong{display:block;color:var(--ink);font-weight:600;margin-bottom:2px;}
+  .messages-list{padding:24px 0 16px;}
+  .msg-row{display:flex;padding:4px 28px;animation:msgIn 0.3s cubic-bezier(0.4,0,0.2,1) both;max-width:900px;margin:0 auto;width:100%;}
+  @keyframes msgIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+  .msg-row.ai{flex-direction:row;align-items:flex-start;gap:12px;}
+  .msg-row.user{flex-direction:row-reverse;align-items:flex-start;gap:12px;}
+  .msg-avatar{width:32px;height:32px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+  .msg-avatar.ai-av{background:linear-gradient(135deg,var(--jade-500),var(--jade-700));box-shadow:0 2px 6px rgba(47,122,89,0.3);}
+  .msg-avatar.ai-av svg{width:16px;height:16px;color:#fff;}
+  .msg-avatar.user-av{background:var(--mist);border:1px solid var(--fog);}
+  .msg-avatar.user-av svg{width:15px;height:15px;color:var(--stone-400);}
+  .msg-content{max-width:75%;min-width:0;}
+  .msg-row.user .msg-content{align-items:flex-end;}
+  .msg-name{font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:5px;color:var(--stone-400);}
+  .msg-row.user .msg-name{text-align:right;color:var(--stone-400);}
+  .msg-bubble{padding:12px 16px;border-radius:var(--radius-lg);font-size:14px;line-height:1.7;position:relative;}
+  .msg-row.ai .msg-bubble{background:var(--mist);border:1px solid var(--fog);border-top-left-radius:var(--radius-sm);color:var(--ink);}
+  .msg-row.user .msg-bubble{background:var(--jade-600);color:#fff;border-top-right-radius:var(--radius-sm);}
+  .file-pill{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.22);border-radius:var(--radius-sm);font-size:12.5px;margin-bottom:8px;backdrop-filter:blur(4px);}
+  .file-pill svg{width:13px;height:13px;opacity:0.85;flex-shrink:0;}
+  .file-pill-name{font-weight:500;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .file-pill-size{opacity:0.6;font-size:11px;}
+  .msg-bubble h1,.msg-bubble h2,.msg-bubble h3{font-family:var(--font-serif);font-weight:600;color:var(--jade-800);margin:16px 0 8px;letter-spacing:-0.01em;line-height:1.35;}
+  .msg-bubble h1{font-size:18px;}
+  .msg-bubble h2{font-size:16px;}
+  .msg-bubble h3{font-size:14.5px;}
+  .msg-bubble h1:first-child,.msg-bubble h2:first-child,.msg-bubble h3:first-child{margin-top:0;}
+  .msg-bubble p{margin:0 0 10px;}
+  .msg-bubble p:last-child{margin-bottom:0;}
+  .msg-bubble ul,.msg-bubble ol{margin:8px 0 8px 18px;display:flex;flex-direction:column;gap:4px;}
+  .msg-bubble li{line-height:1.65;}
+  .msg-bubble strong{font-weight:600;color:var(--jade-800);}
+  .msg-bubble em{font-style:italic;}
+  .msg-bubble a{color:var(--jade-600);text-decoration:underline;}
+  .msg-bubble hr{border:none;border-top:1px solid var(--fog);margin:14px 0;}
+  .msg-bubble blockquote{border-left:3px solid var(--jade-300);padding:6px 12px;margin:10px 0;background:var(--jade-50);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--stone-600);font-style:italic;}
+  .msg-bubble table{width:100%;border-collapse:collapse;font-size:13px;margin:12px 0;border-radius:var(--radius-sm);overflow:hidden;}
+  .msg-bubble th{background:var(--jade-100);color:var(--jade-800);font-weight:600;padding:8px 12px;text-align:left;font-size:12px;letter-spacing:0.03em;text-transform:uppercase;border-bottom:1px solid var(--jade-200);}
+  .msg-bubble td{padding:8px 12px;border-bottom:1px solid var(--fog);vertical-align:top;}
+  .msg-bubble tr:last-child td{border-bottom:none;}
+  .msg-bubble tr:nth-child(even) td{background:var(--jade-50);}
+  .msg-bubble code{font-family:'SF Mono','Fira Code','Cascadia Code',monospace;font-size:12.5px;background:rgba(45,106,79,0.08);color:var(--jade-700);padding:1px 5px;border-radius:4px;border:1px solid rgba(45,106,79,0.12);}
+  .code-block{background:var(--jade-900);border-radius:var(--radius-md);margin:12px 0;overflow:hidden;box-shadow:var(--shadow-sm);}
+  .code-block-header{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.06);}
+  .code-block-lang{font-size:11px;font-weight:600;color:var(--jade-300);letter-spacing:0.06em;text-transform:uppercase;}
+  .code-block-copy{display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.4);padding:3px 8px;border-radius:4px;transition:all var(--anim-fast);}
+  .code-block-copy:hover{background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.7);}
+  .code-block-copy svg{width:12px;height:12px;}
+  .code-block pre{padding:14px 16px;overflow-x:auto;margin:0;}
+  .code-block pre::-webkit-scrollbar{height:4px;}
+  .code-block pre::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:4px;}
+  .code-block code{background:none;border:none;color:#a8d5bb;font-size:13px;padding:0;border-radius:0;line-height:1.6;white-space:pre;}
 
-    --cream:      #f8f6f1;
-    --paper:      #ffffff;
-    --mist:       #f2f0eb;
-    --fog:        #e8e6e1;
-    --stone-200:  #d4d2cd;
-    --stone-400:  #9b9991;
-    --stone-600:  #6b6960;
-    --stone-800:  #2e2d2a;
-    --ink:        #1a1917;
+  /* ── Confidence bar ── */
+  .conf-bar-wrap{display:flex;align-items:center;gap:10px;margin:8px 0 4px;}
+  .conf-bar-track{flex:1;height:6px;background:var(--fog);border-radius:3px;overflow:hidden;max-width:200px;}
+  .conf-bar-fill{height:100%;border-radius:3px;transition:width 0.6s cubic-bezier(0.4,0,0.2,1);}
+  .conf-bar-fill.high{background:linear-gradient(90deg,#4ade80,#22c55e);}
+  .conf-bar-fill.med{background:linear-gradient(90deg,#fbbf24,#f59e0b);}
+  .conf-bar-fill.low{background:linear-gradient(90deg,#f87171,#ef4444);}
+  .conf-pct{font-size:12px;font-weight:600;color:var(--stone-600);}
 
-    --sidebar-w:  280px;
-    --radius-sm:  6px;
-    --radius-md:  12px;
-    --radius-lg:  18px;
-    --radius-xl:  24px;
+  .risk-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11.5px;font-weight:600;letter-spacing:0.02em;}
+  .risk-high{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;}
+  .risk-medium{background:#fef3c7;color:#b45309;border:1px solid #fcd34d;}
+  .risk-low{background:#dcfce7;color:#166534;border:1px solid #86efac;}
 
-    --shadow-xs: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-    --shadow-sm: 0 2px 8px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05);
-    --shadow-md: 0 4px 16px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06);
-    --shadow-lg: 0 8px 32px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08);
+  /* ── Extraction card ── */
+  .extract-card{background:var(--paper);border:1px solid var(--fog);border-radius:var(--radius-md);overflow:hidden;margin:10px 0;box-shadow:var(--shadow-xs);}
+  .extract-card-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--jade-50);border-bottom:1px solid var(--jade-100);}
+  .extract-card-title{font-size:12px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--jade-700);}
+  .extract-card-body{padding:12px 14px;}
 
-    --font-sans: 'DM Sans', sans-serif;
-    --font-serif: 'Lora', serif;
+  .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;}
+  .field-item{display:flex;flex-direction:column;gap:2px;}
+  .field-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--stone-400);}
+  .field-value{font-size:13px;color:var(--ink);font-weight:500;}
+  .field-value.missing{color:var(--stone-200);font-style:italic;font-weight:400;}
 
-    --anim-fast:  150ms cubic-bezier(0.4, 0, 0.2, 1);
-    --anim-mid:   280ms cubic-bezier(0.4, 0, 0.2, 1);
-    --anim-slow:  420ms cubic-bezier(0.4, 0, 0.2, 1);
-  }
+  .class-pills{display:flex;gap:5px;flex-wrap:wrap;margin-top:2px;}
+  .class-pill{padding:2px 8px;background:var(--jade-100);color:var(--jade-700);border-radius:20px;font-size:11px;font-weight:600;}
 
-  /* ─── Reset ─────────────────────────────────────────────────── */
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; overflow: hidden; }
-  body {
-    font-family: var(--font-sans);
-    font-size: 14px;
-    color: var(--ink);
-    background: var(--cream);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-  button { cursor: pointer; border: none; background: none; font-family: inherit; }
-  input, textarea { font-family: inherit; }
-  a { text-decoration: none; color: inherit; }
+  .validation-row{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--fog);}
+  .validation-row:last-child{border-bottom:none;}
+  .validation-icon{font-size:14px;flex-shrink:0;margin-top:1px;}
+  .validation-text{font-size:13px;color:var(--stone-600);line-height:1.5;}
+  .validation-ok{color:var(--jade-600);}
 
-  /* ─── Layout ─────────────────────────────────────────────────── */
-  .app {
-    display: flex;
-    height: 100vh;
-    overflow: hidden;
-  }
+  .classif-result{background:var(--jade-900);border-radius:var(--radius-md);padding:12px 16px;margin:10px 0;}
+  .classif-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0;}
+  .classif-key{font-size:11px;color:var(--jade-300);text-transform:uppercase;letter-spacing:0.06em;}
+  .classif-val{font-size:13px;color:#fff;font-weight:500;}
+  .classif-score-bar{height:4px;background:rgba(255,255,255,0.1);border-radius:2px;margin-top:6px;overflow:hidden;}
+  .classif-score-fill{height:100%;background:linear-gradient(90deg,var(--jade-400),var(--jade-300));border-radius:2px;}
 
-  /* ─── Sidebar ────────────────────────────────────────────────── */
-  .sidebar {
-    width: var(--sidebar-w);
-    min-width: var(--sidebar-w);
-    height: 100%;
-    background: var(--jade-900);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    position: relative;
-    z-index: 10;
-  }
-  .sidebar::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.015'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    pointer-events: none;
-  }
+  .msg-actions{display:flex;align-items:center;gap:4px;margin-top:6px;opacity:0;transition:opacity var(--anim-fast);}
+  .msg-row:hover .msg-actions{opacity:1;}
+  .msg-row.ai .msg-actions{justify-content:flex-start;}
+  .msg-row.user .msg-actions{justify-content:flex-end;}
+  .msg-action-btn{width:26px;height:26px;border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--stone-400);transition:all var(--anim-fast);}
+  .msg-action-btn:hover{background:var(--fog);color:var(--stone-600);}
+  .msg-action-btn svg{width:13px;height:13px;}
+  .msg-time{font-size:10.5px;color:var(--stone-200);padding:3px 6px;align-self:center;}
 
-  .sidebar-header {
-    padding: 20px 16px 14px;
-    border-bottom: 1px solid rgba(255,255,255,0.07);
-  }
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 16px;
-  }
-  .brand-icon {
-    width: 34px;
-    height: 34px;
-    background: linear-gradient(135deg, var(--jade-400), var(--jade-600));
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(47,122,89,0.4);
-  }
-  .brand-icon svg { width: 18px; height: 18px; }
-  .brand-name {
-    font-family: var(--font-serif);
-    font-size: 18px;
-    font-weight: 600;
-    color: #fff;
-    letter-spacing: -0.02em;
-    line-height: 1;
-  }
-  .brand-sub {
-    font-size: 10px;
-    color: var(--jade-300);
-    font-weight: 400;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    margin-top: 1px;
-  }
+  .typing-row{display:flex;padding:8px 28px;max-width:900px;margin:0 auto;width:100%;animation:msgIn 0.3s ease both;}
+  .typing-bubble{display:flex;align-items:center;gap:4px;padding:10px 14px;background:var(--mist);border:1px solid var(--fog);border-radius:var(--radius-lg);border-top-left-radius:var(--radius-sm);margin-left:44px;}
+  .typing-dot{width:7px;height:7px;background:var(--jade-400);border-radius:50%;animation:bounce 1.2s infinite ease-in-out;}
+  .typing-dot:nth-child(2){animation-delay:0.2s;}
+  .typing-dot:nth-child(3){animation-delay:0.4s;}
+  @keyframes bounce{0%,80%,100%{transform:scale(0.7);opacity:0.4;}40%{transform:scale(1);opacity:1;}}
 
-  .new-chat-btn {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 9px 12px;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.09);
-    border-radius: var(--radius-sm);
-    color: rgba(255,255,255,0.85);
-    font-size: 13px;
-    font-weight: 500;
-    transition: background var(--anim-fast), border-color var(--anim-fast);
-  }
-  .new-chat-btn:hover {
-    background: rgba(255,255,255,0.11);
-    border-color: rgba(255,255,255,0.15);
-  }
-  .new-chat-btn svg { width: 15px; height: 15px; opacity: 0.7; flex-shrink: 0; }
-
-  .sidebar-section-label {
-    padding: 16px 16px 6px;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--jade-300);
-    opacity: 0.7;
-  }
-
-  .chat-history {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0 8px 8px;
-  }
-  .chat-history::-webkit-scrollbar { width: 4px; }
-  .chat-history::-webkit-scrollbar-track { background: transparent; }
-  .chat-history::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-
-  .history-item {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    padding: 9px 10px;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: background var(--anim-fast);
-    position: relative;
-    group: true;
-  }
-  .history-item:hover { background: rgba(255,255,255,0.06); }
-  .history-item.active { background: rgba(255,255,255,0.10); }
-  .history-item-icon {
-    width: 28px;
-    height: 28px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  .history-item-icon svg { width: 13px; height: 13px; color: var(--jade-300); }
-  .history-item-text {
-    flex: 1;
-    min-width: 0;
-  }
-  .history-item-title {
-    font-size: 12.5px;
-    font-weight: 500;
-    color: rgba(255,255,255,0.8);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .history-item-date {
-    font-size: 10.5px;
-    color: rgba(255,255,255,0.35);
-    margin-top: 1px;
-  }
-  .history-item-del {
-    width: 22px;
-    height: 22px;
-    border-radius: 4px;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    color: rgba(255,255,255,0.4);
-    transition: color var(--anim-fast), background var(--anim-fast);
-    flex-shrink: 0;
-  }
-  .history-item:hover .history-item-del { display: flex; }
-  .history-item-del:hover { color: #ff7b7b; background: rgba(255,100,100,0.12); }
-  .history-item-del svg { width: 12px; height: 12px; }
-
-  .history-empty {
-    padding: 20px 16px;
-    text-align: center;
-    color: rgba(255,255,255,0.25);
-    font-size: 12px;
-    line-height: 1.6;
-  }
-
-  .sidebar-footer {
-    padding: 12px 16px 16px;
-    border-top: 1px solid rgba(255,255,255,0.07);
-  }
-  .user-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .user-avatar {
-    width: 30px;
-    height: 30px;
-    background: linear-gradient(135deg, var(--jade-500), var(--jade-700));
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 600;
-    color: #fff;
-    flex-shrink: 0;
-  }
-  .user-details { flex: 1; min-width: 0; }
-  .user-name {
-    font-size: 12.5px;
-    font-weight: 500;
-    color: rgba(255,255,255,0.8);
-  }
-  .user-role {
-    font-size: 10.5px;
-    color: rgba(255,255,255,0.35);
-  }
-
-  /* ─── Main Area ──────────────────────────────────────────────── */
-  .main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    height: 100%;
-    background: var(--paper);
-    position: relative;
-  }
-
-  /* ─── Top Bar ────────────────────────────────────────────────── */
-  .topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 28px;
-    height: 56px;
-    border-bottom: 1px solid var(--fog);
-    background: var(--paper);
-    flex-shrink: 0;
-    z-index: 5;
-  }
-  .topbar-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .session-badge {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    background: var(--jade-50);
-    border: 1px solid var(--jade-200);
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--jade-700);
-  }
-  .session-badge .dot {
-    width: 6px;
-    height: 6px;
-    background: var(--jade-500);
-    border-radius: 50%;
-    animation: pulse 2s infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-  .topbar-title {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--stone-600);
-  }
-  .topbar-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .icon-btn {
-    width: 34px;
-    height: 34px;
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--stone-400);
-    transition: background var(--anim-fast), color var(--anim-fast);
-  }
-  .icon-btn:hover { background: var(--mist); color: var(--stone-600); }
-  .icon-btn svg { width: 16px; height: 16px; }
-
-  /* ─── Chat Window ────────────────────────────────────────────── */
-  .chat-window {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0;
-    scroll-behavior: smooth;
-  }
-  .chat-window::-webkit-scrollbar { width: 5px; }
-  .chat-window::-webkit-scrollbar-track { background: transparent; }
-  .chat-window::-webkit-scrollbar-thumb { background: var(--fog); border-radius: 4px; }
-  .chat-window::-webkit-scrollbar-thumb:hover { background: var(--stone-200); }
-
-  /* ─── Welcome Screen ─────────────────────────────────────────── */
-  .welcome {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 60px 40px;
-    height: 100%;
-    min-height: 400px;
-    animation: fadeUp 0.5s ease both;
-  }
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .welcome-icon {
-    width: 64px;
-    height: 64px;
-    background: linear-gradient(135deg, var(--jade-400), var(--jade-700));
-    border-radius: var(--radius-xl);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 20px;
-    box-shadow: 0 8px 24px rgba(47,122,89,0.25), 0 2px 8px rgba(47,122,89,0.15);
-  }
-  .welcome-icon svg { width: 30px; height: 30px; color: #fff; }
-  .welcome-title {
-    font-family: var(--font-serif);
-    font-size: 26px;
-    font-weight: 600;
-    color: var(--ink);
-    margin-bottom: 8px;
-    letter-spacing: -0.02em;
-  }
-  .welcome-sub {
-    font-size: 14px;
-    color: var(--stone-400);
-    text-align: center;
-    max-width: 400px;
-    line-height: 1.65;
-    margin-bottom: 36px;
-  }
-  .welcome-cards {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    width: 100%;
-    max-width: 700px;
-  }
-  .welcome-card {
-    background: var(--mist);
-    border: 1px solid var(--fog);
-    border-radius: var(--radius-md);
-    padding: 16px;
-    cursor: pointer;
-    transition: all var(--anim-mid);
-    text-align: left;
-  }
-  .welcome-card:hover {
-    background: var(--jade-50);
-    border-color: var(--jade-200);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-sm);
-  }
-  .welcome-card-icon {
-    font-size: 20px;
-    margin-bottom: 8px;
-    display: block;
-  }
-  .welcome-card-text {
-    font-size: 12.5px;
-    color: var(--stone-600);
-    line-height: 1.5;
-    font-weight: 400;
-  }
-  .welcome-card-text strong {
-    display: block;
-    color: var(--ink);
-    font-weight: 600;
-    margin-bottom: 2px;
-  }
-
-  /* ─── Messages ───────────────────────────────────────────────── */
-  .messages-list {
-    padding: 24px 0 16px;
-  }
-
-  .msg-row {
-    display: flex;
-    padding: 4px 28px;
-    animation: msgIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
-    max-width: 900px;
-    margin: 0 auto;
-    width: 100%;
-  }
-  @keyframes msgIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  /* AI row */
-  .msg-row.ai {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  .msg-row.user {
-    flex-direction: row-reverse;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .msg-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
-  .msg-avatar.ai-av {
-    background: linear-gradient(135deg, var(--jade-500), var(--jade-700));
-    box-shadow: 0 2px 6px rgba(47,122,89,0.3);
-  }
-  .msg-avatar.ai-av svg { width: 16px; height: 16px; color: #fff; }
-  .msg-avatar.user-av {
-    background: var(--mist);
-    border: 1px solid var(--fog);
-  }
-  .msg-avatar.user-av svg { width: 15px; height: 15px; color: var(--stone-400); }
-
-  .msg-content { max-width: 75%; min-width: 0; }
-
-  .msg-row.user .msg-content { align-items: flex-end; }
-
-  .msg-name {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    margin-bottom: 5px;
-    color: var(--stone-400);
-  }
-  .msg-row.user .msg-name { text-align: right; color: var(--stone-400); }
-
-  .msg-bubble {
-    padding: 12px 16px;
-    border-radius: var(--radius-lg);
-    font-size: 14px;
-    line-height: 1.7;
-    position: relative;
-  }
-  .msg-row.ai .msg-bubble {
-    background: var(--mist);
-    border: 1px solid var(--fog);
-    border-top-left-radius: var(--radius-sm);
-    color: var(--ink);
-  }
-  .msg-row.user .msg-bubble {
-    background: var(--jade-600);
-    color: #fff;
-    border-top-right-radius: var(--radius-sm);
-  }
-
-  /* Uploaded file pill inside user bubble */
-  .file-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    padding: 7px 11px;
-    background: rgba(255,255,255,0.15);
-    border: 1px solid rgba(255,255,255,0.22);
-    border-radius: var(--radius-sm);
-    font-size: 12.5px;
-    margin-bottom: 8px;
-    backdrop-filter: blur(4px);
-  }
-  .file-pill svg { width: 13px; height: 13px; opacity: 0.85; flex-shrink: 0; }
-  .file-pill-name { font-weight: 500; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .file-pill-size { opacity: 0.6; font-size: 11px; }
-
-  /* Markdown styles inside ai bubble */
-  .msg-bubble h1, .msg-bubble h2, .msg-bubble h3 {
-    font-family: var(--font-serif);
-    font-weight: 600;
-    color: var(--jade-800);
-    margin: 16px 0 8px;
-    letter-spacing: -0.01em;
-    line-height: 1.35;
-  }
-  .msg-bubble h1 { font-size: 18px; }
-  .msg-bubble h2 { font-size: 16px; }
-  .msg-bubble h3 { font-size: 14.5px; }
-  .msg-bubble h1:first-child, .msg-bubble h2:first-child, .msg-bubble h3:first-child { margin-top: 0; }
-  .msg-bubble p { margin: 0 0 10px; }
-  .msg-bubble p:last-child { margin-bottom: 0; }
-  .msg-bubble ul, .msg-bubble ol {
-    margin: 8px 0 8px 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .msg-bubble li { line-height: 1.65; }
-  .msg-bubble strong { font-weight: 600; color: var(--jade-800); }
-  .msg-bubble em { font-style: italic; }
-  .msg-bubble a { color: var(--jade-600); text-decoration: underline; }
-  .msg-bubble hr { border: none; border-top: 1px solid var(--fog); margin: 14px 0; }
-  .msg-bubble blockquote {
-    border-left: 3px solid var(--jade-300);
-    padding: 6px 12px;
-    margin: 10px 0;
-    background: var(--jade-50);
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-    color: var(--stone-600);
-    font-style: italic;
-  }
-  .msg-bubble table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-    margin: 12px 0;
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-  }
-  .msg-bubble th {
-    background: var(--jade-100);
-    color: var(--jade-800);
-    font-weight: 600;
-    padding: 8px 12px;
-    text-align: left;
-    font-size: 12px;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-    border-bottom: 1px solid var(--jade-200);
-  }
-  .msg-bubble td {
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--fog);
-    vertical-align: top;
-  }
-  .msg-bubble tr:last-child td { border-bottom: none; }
-  .msg-bubble tr:nth-child(even) td { background: var(--jade-50); }
-
-  /* Inline code */
-  .msg-bubble code {
-    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-    font-size: 12.5px;
-    background: rgba(45,106,79,0.08);
-    color: var(--jade-700);
-    padding: 1px 5px;
-    border-radius: 4px;
-    border: 1px solid rgba(45,106,79,0.12);
-  }
-
-  /* Code blocks */
-  .code-block {
-    background: var(--jade-900);
-    border-radius: var(--radius-md);
-    margin: 12px 0;
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-  }
-  .code-block-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 14px;
-    background: rgba(255,255,255,0.04);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-  }
-  .code-block-lang {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--jade-300);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-  .code-block-copy {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 11px;
-    color: rgba(255,255,255,0.4);
-    padding: 3px 8px;
-    border-radius: 4px;
-    transition: all var(--anim-fast);
-  }
-  .code-block-copy:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.7); }
-  .code-block-copy svg { width: 12px; height: 12px; }
-  .code-block pre {
-    padding: 14px 16px;
-    overflow-x: auto;
-    margin: 0;
-  }
-  .code-block pre::-webkit-scrollbar { height: 4px; }
-  .code-block pre::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-  .code-block code {
-    background: none;
-    border: none;
-    color: #a8d5bb;
-    font-size: 13px;
-    padding: 0;
-    border-radius: 0;
-    line-height: 1.6;
-    white-space: pre;
-  }
-
-  /* Risk badge */
-  .risk-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 9px;
-    border-radius: 20px;
-    font-size: 11.5px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-  }
-  .risk-high   { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
-  .risk-medium { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
-  .risk-low    { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
-
-  /* Msg actions */
-  .msg-actions {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-top: 6px;
-    opacity: 0;
-    transition: opacity var(--anim-fast);
-  }
-  .msg-row:hover .msg-actions { opacity: 1; }
-  .msg-row.ai .msg-actions { justify-content: flex-start; }
-  .msg-row.user .msg-actions { justify-content: flex-end; }
-  .msg-action-btn {
-    width: 26px;
-    height: 26px;
-    border-radius: 5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--stone-400);
-    transition: all var(--anim-fast);
-  }
-  .msg-action-btn:hover { background: var(--fog); color: var(--stone-600); }
-  .msg-action-btn svg { width: 13px; height: 13px; }
-  .msg-time {
-    font-size: 10.5px;
-    color: var(--stone-200);
-    padding: 3px 6px;
-    align-self: center;
-  }
-
-  /* ─── Typing indicator ───────────────────────────────────────── */
-  .typing-row {
-    display: flex;
-    padding: 8px 28px;
-    max-width: 900px;
-    margin: 0 auto;
-    width: 100%;
-    animation: msgIn 0.3s ease both;
-  }
-  .typing-bubble {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 10px 14px;
-    background: var(--mist);
-    border: 1px solid var(--fog);
-    border-radius: var(--radius-lg);
-    border-top-left-radius: var(--radius-sm);
-    margin-left: 44px;
-  }
-  .typing-dot {
-    width: 7px;
-    height: 7px;
-    background: var(--jade-400);
-    border-radius: 50%;
-    animation: bounce 1.2s infinite ease-in-out;
-  }
-  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes bounce {
-    0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }
-    40% { transform: scale(1); opacity: 1; }
-  }
-
-  /* ─── Input Area ─────────────────────────────────────────────── */
-  .input-area {
-    padding: 14px 28px 20px;
-    background: var(--paper);
-    border-top: 1px solid var(--fog);
-    flex-shrink: 0;
-  }
-  .input-wrapper {
-    max-width: 900px;
-    margin: 0 auto;
-  }
-
-  /* File preview */
-  .file-preview-bar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 12px;
-    background: var(--jade-50);
-    border: 1px solid var(--jade-200);
-    border-radius: var(--radius-sm);
-    margin-bottom: 8px;
-    animation: slideDown 0.2s ease both;
-  }
-  @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-6px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .file-preview-bar svg { width: 14px; height: 14px; color: var(--jade-500); flex-shrink: 0; }
-  .file-preview-name {
-    font-size: 12.5px;
-    font-weight: 500;
-    color: var(--jade-700);
-    flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .file-preview-size {
-    font-size: 11px;
-    color: var(--jade-500);
-  }
-  .file-preview-remove {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--jade-500);
-    transition: all var(--anim-fast);
-  }
-  .file-preview-remove:hover { background: var(--jade-100); color: var(--jade-700); }
-  .file-preview-remove svg { width: 12px; height: 12px; }
-
-  .input-box {
-    display: flex;
-    align-items: flex-end;
-    gap: 8px;
-    background: var(--mist);
-    border: 1.5px solid var(--fog);
-    border-radius: var(--radius-lg);
-    padding: 10px 10px 10px 14px;
-    transition: border-color var(--anim-fast), box-shadow var(--anim-fast);
-  }
-  .input-box:focus-within {
-    border-color: var(--jade-400);
-    box-shadow: 0 0 0 3px rgba(47,122,89,0.08);
-    background: var(--paper);
-  }
-
-  .upload-btn {
-    width: 34px;
-    height: 34px;
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--stone-400);
-    flex-shrink: 0;
-    transition: all var(--anim-fast);
-    position: relative;
-  }
-  .upload-btn:hover { background: var(--fog); color: var(--jade-600); }
-  .upload-btn.has-file { color: var(--jade-600); background: var(--jade-50); }
-  .upload-btn svg { width: 17px; height: 17px; }
-  .upload-btn input[type="file"] {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
-    font-size: 0;
-  }
-
-  #msg-input {
-    flex: 1;
-    resize: none;
-    border: none;
-    background: transparent;
-    font-size: 14px;
-    color: var(--ink);
-    line-height: 1.6;
-    max-height: 180px;
-    outline: none;
-    padding: 4px 0;
-    overflow-y: auto;
-  }
-  #msg-input::placeholder { color: var(--stone-400); }
-  #msg-input::-webkit-scrollbar { width: 3px; }
-  #msg-input::-webkit-scrollbar-thumb { background: var(--fog); }
-
-  .send-btn {
-    width: 34px;
-    height: 34px;
-    border-radius: var(--radius-sm);
-    background: var(--jade-600);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    transition: all var(--anim-fast);
-    box-shadow: 0 1px 4px rgba(47,122,89,0.3);
-  }
-  .send-btn:hover { background: var(--jade-700); transform: scale(1.04); }
-  .send-btn:active { transform: scale(0.97); }
-  .send-btn:disabled { background: var(--fog); box-shadow: none; transform: none; cursor: not-allowed; }
-  .send-btn svg { width: 16px; height: 16px; color: #fff; }
-
-  .input-hint {
-    font-size: 11px;
-    color: var(--stone-200);
-    text-align: center;
-    margin-top: 8px;
-    letter-spacing: 0.01em;
-  }
-  .input-hint kbd {
-    background: var(--fog);
-    border: 1px solid var(--stone-200);
-    border-radius: 3px;
-    padding: 0 4px;
-    font-size: 10px;
-    font-family: inherit;
-  }
-
-  /* ─── Toast ──────────────────────────────────────────────────── */
-  .toast {
-    position: fixed;
-    bottom: 28px;
-    left: 50%;
-    transform: translateX(-50%) translateY(20px);
-    background: var(--jade-900);
-    color: #fff;
-    padding: 10px 18px;
-    border-radius: var(--radius-md);
-    font-size: 13px;
-    opacity: 0;
-    transition: all 0.3s ease;
-    pointer-events: none;
-    z-index: 999;
-    box-shadow: var(--shadow-lg);
-    white-space: nowrap;
-  }
-  .toast.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-
-  /* ─── Scrollbar themed ───────────────────────────────────────── */
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: var(--fog) transparent;
-  }
+  .input-area{padding:14px 28px 20px;background:var(--paper);border-top:1px solid var(--fog);flex-shrink:0;}
+  .input-wrapper{max-width:900px;margin:0 auto;}
+  .file-preview-bar{display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--jade-50);border:1px solid var(--jade-200);border-radius:var(--radius-sm);margin-bottom:8px;animation:slideDown 0.2s ease both;}
+  @keyframes slideDown{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
+  .file-preview-bar svg{width:14px;height:14px;color:var(--jade-500);flex-shrink:0;}
+  .file-preview-name{font-size:12.5px;font-weight:500;color:var(--jade-700);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .file-preview-size{font-size:11px;color:var(--jade-500);}
+  .file-preview-remove{width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--jade-500);transition:all var(--anim-fast);}
+  .file-preview-remove:hover{background:var(--jade-100);color:var(--jade-700);}
+  .file-preview-remove svg{width:12px;height:12px;}
+  .input-box{display:flex;align-items:flex-end;gap:8px;background:var(--mist);border:1.5px solid var(--fog);border-radius:var(--radius-lg);padding:10px 10px 10px 14px;transition:border-color var(--anim-fast),box-shadow var(--anim-fast);}
+  .input-box:focus-within{border-color:var(--jade-400);box-shadow:0 0 0 3px rgba(47,122,89,0.08);background:var(--paper);}
+  .upload-btn{width:34px;height:34px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--stone-400);flex-shrink:0;transition:all var(--anim-fast);position:relative;}
+  .upload-btn:hover{background:var(--fog);color:var(--jade-600);}
+  .upload-btn.has-file{color:var(--jade-600);background:var(--jade-50);}
+  .upload-btn svg{width:17px;height:17px;}
+  .upload-btn input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0;}
+  #msg-input{flex:1;resize:none;border:none;background:transparent;font-size:14px;color:var(--ink);line-height:1.6;max-height:180px;outline:none;padding:4px 0;overflow-y:auto;}
+  #msg-input::placeholder{color:var(--stone-400);}
+  #msg-input::-webkit-scrollbar{width:3px;}
+  #msg-input::-webkit-scrollbar-thumb{background:var(--fog);}
+  .send-btn{width:34px;height:34px;border-radius:var(--radius-sm);background:var(--jade-600);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all var(--anim-fast);box-shadow:0 1px 4px rgba(47,122,89,0.3);}
+  .send-btn:hover{background:var(--jade-700);transform:scale(1.04);}
+  .send-btn:active{transform:scale(0.97);}
+  .send-btn:disabled{background:var(--fog);box-shadow:none;transform:none;cursor:not-allowed;}
+  .send-btn svg{width:16px;height:16px;color:#fff;}
+  .input-hint{font-size:11px;color:var(--stone-200);text-align:center;margin-top:8px;letter-spacing:0.01em;}
+  .input-hint kbd{background:var(--fog);border:1px solid var(--stone-200);border-radius:3px;padding:0 4px;font-size:10px;font-family:inherit;}
+  .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--jade-900);color:#fff;padding:10px 18px;border-radius:var(--radius-md);font-size:13px;opacity:0;transition:all 0.3s ease;pointer-events:none;z-index:999;box-shadow:var(--shadow-lg);white-space:nowrap;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  *{scrollbar-width:thin;scrollbar-color:var(--fog) transparent;}
 </style>
 </head>
 <body>
 
 <div class="app">
-
-  <!-- ══════════════════ SIDEBAR ══════════════════ -->
   <aside class="sidebar">
     <div class="sidebar-header">
       <div class="brand">
@@ -942,10 +259,8 @@
         New Analysis
       </button>
     </div>
-
     <div class="sidebar-section-label">Jade History</div>
     <div class="chat-history" id="chatHistory"></div>
-
     <div class="sidebar-footer">
       <div class="user-info">
         <div class="user-avatar">J</div>
@@ -957,7 +272,6 @@
     </div>
   </aside>
 
-  <!-- ══════════════════ MAIN ══════════════════ -->
   <main class="main">
     <div class="topbar">
       <div class="topbar-left">
@@ -993,28 +307,18 @@
         <div class="welcome-cards">
           <div class="welcome-card" onclick="usePrompt('Analyze the likelihood of confusion risks in this trademark application.')">
             <span class="welcome-card-icon">⚖️</span>
-            <div class="welcome-card-text">
-              <strong>Confusion Analysis</strong>
-              Assess likelihood of confusion with existing marks
-            </div>
+            <div class="welcome-card-text"><strong>Confusion Analysis</strong>Assess likelihood of confusion with existing marks</div>
           </div>
           <div class="welcome-card" onclick="usePrompt('Review the trademark classification and identify any specification issues.')">
             <span class="welcome-card-icon">📋</span>
-            <div class="welcome-card-text">
-              <strong>Classification Review</strong>
-              Verify goods & services classification accuracy
-            </div>
+            <div class="welcome-card-text"><strong>Classification Review</strong>Verify goods &amp; services classification accuracy</div>
           </div>
           <div class="welcome-card" onclick="usePrompt('Provide a full risk assessment report for this trademark application.')">
             <span class="welcome-card-icon">📊</span>
-            <div class="welcome-card-text">
-              <strong>Full Risk Report</strong>
-              Comprehensive trademark viability assessment
-            </div>
+            <div class="welcome-card-text"><strong>Full Risk Report</strong>Comprehensive trademark viability assessment</div>
           </div>
         </div>
       </div>
-
       <div class="messages-list" id="messagesList" style="display:none;"></div>
     </div>
 
@@ -1029,12 +333,10 @@
           <span class="file-preview-size" id="filePreviewSize"></span>
           <button class="file-preview-remove" onclick="removeFile()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <line x1="18" y1="6" x2="6" y2="18"/>
-              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
           </button>
         </div>
-
         <div class="input-box">
           <button class="upload-btn" id="uploadBtn" title="Upload PDF">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1045,15 +347,8 @@
             </svg>
             <input type="file" accept=".pdf" id="fileInput" onchange="handleFileSelect(event)" />
           </button>
-
-          <textarea
-            id="msg-input"
-            placeholder="Ask about your trademark application..."
-            rows="1"
-            onkeydown="handleKeyDown(event)"
-            oninput="autoResize(this)"
-          ></textarea>
-
+          <textarea id="msg-input" placeholder="Ask about your trademark application..." rows="1"
+            onkeydown="handleKeyDown(event)" oninput="autoResize(this)"></textarea>
           <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <line x1="22" y1="2" x2="11" y2="13"/>
@@ -1069,103 +364,71 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- ══════════════════ JAVASCRIPT ══════════════════ -->
 <script>
-/* ─────────────────────────────────────────────────
-   State
-───────────────────────────────────────────────── */
-let sessions     = JSON.parse(localStorage.getItem('jade_sessions') || '[]');
-let currentId    = null;
-let pendingFile  = null;
-let isTyping     = false;
+/* ─── State ─── */
+let sessions    = JSON.parse(localStorage.getItem('jade_sessions') || '[]');
+let currentId   = null;
+let pendingFile = null;
+let isTyping    = false;
 
-/* ─────────────────────────────────────────────────
-   Helpers
-───────────────────────────────────────────────── */
-function uid() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-}
+/* ─── Helpers ─── */
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function fmtDate(ts) {
-  const d = new Date(ts);
-  const now = new Date();
-  const diff = now - d;
+  const d = new Date(ts), now = new Date(), diff = now - d;
   if (diff < 60000) return 'Just now';
   if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`;
-  if (diff < 86400000) return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-  return d.toLocaleDateString([], {month:'short', day:'numeric'});
+  if (diff < 86400000) return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  return d.toLocaleDateString([],{month:'short',day:'numeric'});
 }
-function fmtTime(ts) {
-  return new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-}
+function fmtTime(ts) { return new Date(ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }
 function fmtBytes(b) {
   if (b < 1024) return b+'B';
   if (b < 1024*1024) return (b/1024).toFixed(1)+'KB';
   return (b/1024/1024).toFixed(1)+'MB';
 }
-function save() {
-  localStorage.setItem('jade_sessions', JSON.stringify(sessions));
+function save() { localStorage.setItem('jade_sessions', JSON.stringify(sessions)); }
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-/* ─────────────────────────────────────────────────
-   Toast
-───────────────────────────────────────────────── */
+/* ─── Toast ─── */
 function toast(msg, dur=2400) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
+  t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), dur);
 }
 
-/* ─────────────────────────────────────────────────
-   Session management
-───────────────────────────────────────────────── */
+/* ─── Sessions ─── */
 function newSession() {
   const id = uid();
-  const s = {
-    id, title: 'New Analysis',
-    messages: [], createdAt: Date.now(), updatedAt: Date.now()
-  };
-  sessions.unshift(s);
-  save();
-  loadSession(id);
-  renderSidebar();
+  sessions.unshift({ id, title:'New Analysis', messages:[], createdAt:Date.now(), updatedAt:Date.now() });
+  save(); loadSession(id); renderSidebar();
 }
-
 function loadSession(id) {
   currentId = id;
   const s = sessions.find(x => x.id === id);
   if (!s) return;
   document.getElementById('chatTitleTop').textContent = s.title;
-  renderMessages(s.messages);
-  renderSidebar();
+  renderMessages(s.messages); renderSidebar();
 }
-
 function deleteSession(id, e) {
   e.stopPropagation();
-  sessions = sessions.filter(x => x.id !== id);
-  save();
+  sessions = sessions.filter(x => x.id !== id); save();
   if (currentId === id) {
     currentId = null;
     document.getElementById('messagesList').style.display = 'none';
     document.getElementById('welcomeScreen').style.display = 'flex';
     document.getElementById('chatTitleTop').textContent = 'New Analysis Session';
   }
-  renderSidebar();
-  toast('Session removed');
+  renderSidebar(); toast('Session removed');
 }
+function getSession() { return sessions.find(x => x.id === currentId); }
 
-function getSession() {
-  return sessions.find(x => x.id === currentId);
-}
-
-/* ─────────────────────────────────────────────────
-   Sidebar render
-───────────────────────────────────────────────── */
+/* ─── Sidebar ─── */
 function renderSidebar() {
   const el = document.getElementById('chatHistory');
   if (!sessions.length) {
-    el.innerHTML = `<div class="history-empty">No sessions yet.<br>Start a new analysis above.</div>`;
-    return;
+    el.innerHTML = `<div class="history-empty">No sessions yet.<br>Start a new analysis above.</div>`; return;
   }
   el.innerHTML = sessions.map(s => `
     <div class="history-item ${s.id===currentId?'active':''}" onclick="loadSession('${s.id}')">
@@ -1181,28 +444,18 @@ function renderSidebar() {
       </div>
       <button class="history-item-del" onclick="deleteSession('${s.id}',event)" title="Delete">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="6" x2="6" y2="18"/>
-          <line x1="6" y1="6" x2="18" y2="18"/>
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
         </svg>
       </button>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
-/* ─────────────────────────────────────────────────
-   Message render
-───────────────────────────────────────────────── */
+/* ─── Messages ─── */
 function renderMessages(messages) {
   const listEl = document.getElementById('messagesList');
   const welcome = document.getElementById('welcomeScreen');
-
-  if (!messages.length) {
-    listEl.style.display = 'none';
-    welcome.style.display = 'flex';
-    return;
-  }
-  welcome.style.display = 'none';
-  listEl.style.display = 'block';
+  if (!messages.length) { listEl.style.display='none'; welcome.style.display='flex'; return; }
+  welcome.style.display='none'; listEl.style.display='block';
   listEl.innerHTML = messages.map(m => buildMsgHtml(m)).join('');
   scrollBottom();
 }
@@ -1210,51 +463,32 @@ function renderMessages(messages) {
 function buildMsgHtml(m) {
   const isUser = m.role === 'user';
   const avatarHtml = isUser
-    ? `<div class="msg-avatar user-av">
-         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-           <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-           <circle cx="12" cy="7" r="4"/>
-         </svg>
-       </div>`
-    : `<div class="msg-avatar ai-av">
-         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-           <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-         </svg>
-       </div>`;
+    ? `<div class="msg-avatar user-av"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>`
+    : `<div class="msg-avatar ai-av"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>`;
 
   const filePillHtml = m.file
-    ? `<div class="file-pill">
-         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-           <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/>
-           <polyline points="14,2 14,8 20,8"/>
-         </svg>
-         <span class="file-pill-name">${escHtml(m.file.name)}</span>
-         <span class="file-pill-size">${m.file.size}</span>
-       </div><br>`
-    : '';
+    ? `<div class="file-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><polyline points="14,2 14,8 20,8"/></svg><span class="file-pill-name">${escHtml(m.file.name)}</span><span class="file-pill-size">${m.file.size}</span></div><br>` : '';
 
   const content = isUser
     ? `${filePillHtml}<span>${escHtml(m.text)}</span>`
-    : renderMarkdown(m.text);
+    : (m.richHtml || renderMarkdown(m.text));
 
   const actions = isUser
-    ? `<div class="msg-actions">
-         <span class="msg-time">${fmtTime(m.ts)}</span>
-       </div>`
+    ? `<div class="msg-actions"><span class="msg-time">${fmtTime(m.ts)}</span></div>`
     : `<div class="msg-actions">
-         <button class="msg-action-btn" title="Copy" onclick="copyMsg('${m.id}')">
-           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-             <rect x="9" y="9" width="13" height="13" rx="2"/>
-             <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-           </svg>
-         </button>
-         <span class="msg-time">${fmtTime(m.ts)}</span>
+        <button class="msg-action-btn" title="Copy" onclick="copyMsg('${m.id}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2"/>
+            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+          </svg>
+        </button>
+        <span class="msg-time">${fmtTime(m.ts)}</span>
        </div>`;
 
   return `<div class="msg-row ${isUser?'user':'ai'}" data-id="${m.id}">
     ${avatarHtml}
     <div class="msg-content">
-      <div class="msg-name">${isUser ? 'You' : 'Jade AI'}</div>
+      <div class="msg-name">${isUser?'You':'Jade AI'}</div>
       <div class="msg-bubble">${content}</div>
       ${actions}
     </div>
@@ -1262,125 +496,259 @@ function buildMsgHtml(m) {
 }
 
 function appendMsg(m) {
-  const welcome = document.getElementById('welcomeScreen');
-  const listEl  = document.getElementById('messagesList');
-  welcome.style.display = 'none';
-  listEl.style.display  = 'block';
+  document.getElementById('welcomeScreen').style.display = 'none';
+  const listEl = document.getElementById('messagesList');
+  listEl.style.display = 'block';
   const div = document.createElement('div');
   div.innerHTML = buildMsgHtml(m);
   listEl.appendChild(div.firstElementChild);
   scrollBottom();
 }
-
 function scrollBottom() {
   const w = document.getElementById('chatWindow');
   setTimeout(() => { w.scrollTop = w.scrollHeight; }, 40);
 }
 
-/* ─────────────────────────────────────────────────
-   Markdown renderer (lightweight, no deps)
-───────────────────────────────────────────────── */
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;');
-}
-
+/* ─── Markdown ─── */
 function renderMarkdown(md) {
   let html = md;
-
-  // Fenced code blocks
-  html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
-    const langLabel = lang || 'code';
-    return `<div class="code-block">
-      <div class="code-block-header">
-        <span class="code-block-lang">${escHtml(langLabel)}</span>
-        <button class="code-block-copy" onclick="copyCode(this)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="9" y="9" width="13" height="13" rx="2"/>
-            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-          </svg>
-          Copy
-        </button>
-      </div>
-      <pre><code>${escHtml(code.trimEnd())}</code></pre>
-    </div>`;
+  html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_,lang,code) => {
+    const lbl = lang || 'code';
+    return `<div class="code-block"><div class="code-block-header"><span class="code-block-lang">${escHtml(lbl)}</span><button class="code-block-copy" onclick="copyCode(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy</button></div><pre><code>${escHtml(code.trimEnd())}</code></pre></div>`;
   });
-
-  // Inline code
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-  // Headers
-  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-
-  // Blockquote
-  html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
-
-  // HR
-  html = html.replace(/^---+$/gm, '<hr/>');
-
-  // Bold / italic
-  html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-  html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
-  html = html.replace(/_(.+?)_/g, '<em>$1</em>');
-
-  // Risk badges
-  html = html.replace(/\[HIGH RISK\]/gi, '<span class="risk-badge risk-high">⚠ HIGH RISK</span>');
-  html = html.replace(/\[MEDIUM RISK\]/gi, '<span class="risk-badge risk-medium">◆ MEDIUM RISK</span>');
-  html = html.replace(/\[LOW RISK\]/gi, '<span class="risk-badge risk-low">✓ LOW RISK</span>');
-
-  // Tables
-  html = html.replace(/(\|.+\|\n)+/g, (table) => {
+  html = html.replace(/`([^`]+)`/g,'<code>$1</code>');
+  html = html.replace(/^### (.+)$/gm,'<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm,'<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm,'<h1>$1</h1>');
+  html = html.replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>');
+  html = html.replace(/^---+$/gm,'<hr/>');
+  html = html.replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>');
+  html = html.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g,'<em>$1</em>');
+  html = html.replace(/\[HIGH RISK\]/gi,'<span class="risk-badge risk-high">⚠ HIGH RISK</span>');
+  html = html.replace(/\[MEDIUM RISK\]/gi,'<span class="risk-badge risk-medium">◆ MEDIUM RISK</span>');
+  html = html.replace(/\[LOW RISK\]/gi,'<span class="risk-badge risk-low">✓ LOW RISK</span>');
+  html = html.replace(/(\|.+\|\n)+/g, table => {
     const rows = table.trim().split('\n').filter(r => !/^\|[-:| ]+\|$/.test(r));
-    if (rows.length < 1) return table;
-    const parseRow = (r) => r.split('|').slice(1,-1).map(c => c.trim());
-    const header = parseRow(rows[0]);
-    const body   = rows.slice(1);
-    const hHtml  = header.map(c => `<th>${c}</th>`).join('');
-    const bHtml  = body.map(r => `<tr>${parseRow(r).map(c=>`<td>${c}</td>`).join('')}</tr>`).join('');
+    if (!rows.length) return table;
+    const pr = r => r.split('|').slice(1,-1).map(c=>c.trim());
+    const hHtml = pr(rows[0]).map(c=>`<th>${c}</th>`).join('');
+    const bHtml = rows.slice(1).map(r=>`<tr>${pr(r).map(c=>`<td>${c}</td>`).join('')}</tr>`).join('');
     return `<table><thead><tr>${hHtml}</tr></thead><tbody>${bHtml}</tbody></table>`;
   });
-
-  // Unordered lists
-  html = html.replace(/(^[ \t]*[-*+] .+\n?)+/gm, (block) => {
-    const items = block.trim().split('\n').map(l => `<li>${l.replace(/^[ \t]*[-*+] /, '')}</li>`).join('');
+  html = html.replace(/(^[ \t]*[-*+] .+\n?)+/gm, block => {
+    const items = block.trim().split('\n').map(l=>`<li>${l.replace(/^[ \t]*[-*+] /,'')}</li>`).join('');
     return `<ul>${items}</ul>`;
   });
-
-  // Ordered lists
-  html = html.replace(/(^\d+\. .+\n?)+/gm, (block) => {
-    const items = block.trim().split('\n').map(l => `<li>${l.replace(/^\d+\. /, '')}</li>`).join('');
+  html = html.replace(/(^\d+\. .+\n?)+/gm, block => {
+    const items = block.trim().split('\n').map(l=>`<li>${l.replace(/^\d+\. /,'')}</li>`).join('');
     return `<ol>${items}</ol>`;
   });
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank">$1</a>');
+  html = html.replace(/^(?!<[houbtpcr])(.+)$/gm,'<p>$1</p>');
+  return html;
+}
 
-  // Links
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+/* ════════════════════════════════════════════════
+   BACKEND RESPONSE FORMATTER
+   Converts the /extract JSON into rich HTML cards
+════════════════════════════════════════════════ */
+function buildExtractionHtml(data) {
 
-  // Paragraphs — wrap bare lines
-  html = html.replace(/^(?!<[houbtpcr])(.+)$/gm, '<p>$1</p>');
+  /* ── helpers ── */
+  const val = (v, fallback='—') => (v != null && v !== '') ? escHtml(String(v)) : `<span class="missing">${fallback}</span>`;
+  const confPct = data.confidence != null ? Math.round(data.confidence * 100) : 0;
+  const confClass = confPct >= 70 ? 'high' : confPct >= 40 ? 'med' : 'low';
+  const riskLabel = confPct >= 70 ? 'LOW RISK' : confPct >= 40 ? 'MEDIUM RISK' : 'HIGH RISK';
+  const riskCls   = confPct >= 70 ? 'risk-low' : confPct >= 40 ? 'risk-medium' : 'risk-high';
+  const riskIcon  = confPct >= 70 ? '✓' : confPct >= 40 ? '◆' : '⚠';
 
-  // Clean up extra blank lines
-  html = html.replace(/\n{3,}/g, '\n\n');
+  const ERROR_LABELS = {
+    serial_number_format:      'Serial number is missing or not 8 digits',
+    filing_date_missing:       'Filing date could not be extracted',
+    class_number_invalid:      'One or more class numbers are out of range (1–45)',
+    identification_missing:    'Identification of goods & services not found',
+    identification_placeholder:'Identification contains placeholder text (N/A / TBD)',
+  };
+  const WARN_LABELS = {
+    no_classes_found: 'No international class numbers were detected',
+  };
+
+  const errors   = data.errors   || [];
+  const warnings = data.warnings || [];
+  const classes  = data.classes  || [];
+
+  /* ── 1. Header card ── */
+  let html = `
+  <div style="margin-bottom:4px;">
+    <strong style="font-family:var(--font-serif);font-size:16px;color:var(--jade-800);">
+      Trademark Extraction Report
+    </strong>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+    <span class="risk-badge ${riskCls}">${riskIcon} ${riskLabel}</span>
+    <div class="conf-bar-wrap" style="margin:0;">
+      <div class="conf-bar-track"><div class="conf-bar-fill ${confClass}" style="width:${confPct}%"></div></div>
+      <span class="conf-pct">${confPct}% confidence</span>
+    </div>
+    ${data.serial_number ? `<code style="font-size:12px;">#${escHtml(data.serial_number)}</code>` : ''}
+  </div>`;
+
+  /* ── 2. Extracted fields card ── */
+  html += `
+  <div class="extract-card">
+    <div class="extract-card-header">
+      <span class="extract-card-title">📋 Extracted Application Data</span>
+    </div>
+    <div class="extract-card-body">
+      <div class="field-grid">
+        <div class="field-item">
+          <span class="field-label">Applicant</span>
+          <span class="field-value ${!data.applicant_name?'missing':''}">${val(data.applicant_name,'Not found')}</span>
+        </div>
+        <div class="field-item">
+          <span class="field-label">Mark</span>
+          <span class="field-value ${!data.mark_text?'missing':''}">${val(data.mark_text,'Not found')}</span>
+        </div>
+        <div class="field-item">
+          <span class="field-label">Filing Date</span>
+          <span class="field-value ${!data.filing_date?'missing':''}">${val(data.filing_date,'Not found')}</span>
+        </div>
+        <div class="field-item">
+          <span class="field-label">Filing Basis</span>
+          <span class="field-value ${!data.filing_basis?'missing':''}">${val(data.filing_basis,'Not found')}</span>
+        </div>
+        <div class="field-item" style="grid-column:1/-1;">
+          <span class="field-label">Int'l Classes</span>
+          ${classes.length
+            ? `<div class="class-pills">${classes.map(c=>`<span class="class-pill">Class ${escHtml(String(c))}</span>`).join('')}</div>`
+            : `<span class="field-value missing">None detected</span>`}
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  /* ── 3. Identification block ── */
+  if (data.identification_text) {
+    const ident = escHtml(data.identification_text.replace(/\n/g,' ').trim().slice(0, 500));
+    html += `
+  <div class="extract-card" style="margin-top:8px;">
+    <div class="extract-card-header">
+      <span class="extract-card-title">📦 Identification of Goods &amp; Services</span>
+    </div>
+    <div class="extract-card-body">
+      <p style="font-size:13px;color:var(--stone-600);line-height:1.65;margin:0;">${ident}${data.identification_text.length>500?'…':''}</p>
+    </div>
+  </div>`;
+  }
+
+  /* ── 4. AI Classification result from HF ── */
+  /* ── 4. AI Classification result from HF ── */
+  if (data.classification_result && data.classification_result.details) {
+
+    const d = data.classification_result.details;
+
+    const claimed = d.claimedClass ?? "Unknown";
+    const suggested = d.suggestedClass ?? "Unknown";
+    const confidence = d.confidenceLevel ?? "Unknown";
+    const explanation = d.explanation ?? "No explanation available.";
+
+/* Convert Invalid → Likely Incorrect */
+    let assessment = "Unknown";
+    if (d.claimedClassStatus === "Valid") {
+      assessment = "Likely Correct";
+    } else if (d.claimedClassStatus === "Invalid") {
+      assessment = "Likely Incorrect";
+    }
+
+    html += `
+    <div class="extract-card" style="margin-top:8px;">
+      <div class="extract-card-header">
+        <span class="extract-card-title">🤖 Trademark Class Validation</span>
+      </div>
+      <div class="extract-card-body">
+
+      <p style="font-weight:600;margin-bottom:10px;">
+      Trademark Class Validation Result
+      </p>
+
+      <p>Selected Class in your trademark application: <strong>${claimed}</strong></p>
+      <p>My Assessment: <strong>${assessment}</strong></p>
+      <p>Suggested Class for your trademark: <strong>${suggested}</strong></p>
+      <p>My Confidence Level: <strong>${confidence}</strong></p>
+
+      <p style="margin-top:10px;"><strong>Explanation:</strong></p>
+      <p style="color:var(--stone-600);">${escHtml(explanation)}</p>
+
+    </div>
+</div>
+`;
+}
+
+  /* ── 5. Validation ── */
+  html += `
+  <div class="extract-card" style="margin-top:8px;">
+    <div class="extract-card-header">
+      <span class="extract-card-title">${(errors.length||warnings.length) ? '⚠ Validation Issues' : '✅ Validation'}</span>
+    </div>
+    <div class="extract-card-body">`;
+
+  if (!errors.length && !warnings.length) {
+    html += `<div class="validation-row"><span class="validation-icon">✅</span><span class="validation-text validation-ok">All required fields extracted successfully — no issues found.</span></div>`;
+  } else {
+    errors.forEach(e => {
+      html += `<div class="validation-row"><span class="validation-icon">❌</span><span class="validation-text">${escHtml(ERROR_LABELS[e] || e)}</span></div>`;
+    });
+    warnings.forEach(w => {
+      html += `<div class="validation-row"><span class="validation-icon">⚠️</span><span class="validation-text">${escHtml(WARN_LABELS[w] || w)}</span></div>`;
+    });
+  }
+  html += `</div></div>`;
+
+  /* ── 6. Tables (up to 2) ── */
+  if (data.tables && data.tables.length) {
+    html += `
+  <div class="extract-card" style="margin-top:8px;">
+    <div class="extract-card-header">
+      <span class="extract-card-title">📊 Extracted Tables (${data.tables.length})</span>
+    </div>
+    <div class="extract-card-body" style="padding:0;">`;
+
+    data.tables.slice(0,2).forEach((t,i) => {
+      const rows = t.rows || [];
+      if (rows.length < 1) return;
+      const head = rows[0].map(c => `<th>${escHtml(String(c||'').trim()||'—')}</th>`).join('');
+      const body = rows.slice(1).slice(0,6).map(r =>
+        `<tr>${r.map(c=>`<td>${escHtml(String(c||'').trim()||'—')}</td>`).join('')}</tr>`
+      ).join('');
+      html += `<div style="padding:8px 14px 4px;font-size:11px;font-weight:600;color:var(--stone-400);text-transform:uppercase;letter-spacing:.06em;">Table ${i+1} · page ${t.page}</div>
+      <div style="overflow-x:auto;padding-bottom:8px;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;margin:0;">
+          <thead><tr>${head}</tr></thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>`;
+    });
+    if (data.tables.length > 2) {
+      html += `<p style="padding:8px 14px;font-size:12px;color:var(--stone-400);">… and ${data.tables.length-2} more table(s) not shown</p>`;
+    }
+    html += `</div></div>`;
+  }
+
+  /* ── 7. Footer ── */
+  if (data.stored_json_path) {
+    html += `<p style="font-size:11px;color:var(--stone-400);margin-top:10px;">Full JSON saved → <code>${escHtml(data.stored_json_path)}</code></p>`;
+  }
 
   return html;
 }
 
-/* ─────────────────────────────────────────────────
-   File handling
-───────────────────────────────────────────────── */
+/* ─── File handling ─── */
 function handleFileSelect(e) {
   const f = e.target.files[0];
   if (!f) return;
-  if (f.type !== 'application/pdf' && !f.name.endsWith('.pdf')) {
-    toast('Please select a PDF file'); return;
-  }
-  pendingFile = { name: f.name, size: fmtBytes(f.size), raw: f };
+  if (f.type !== 'application/pdf' && !f.name.endsWith('.pdf')) { toast('Please select a PDF file'); return; }
+  pendingFile = { name:f.name, size:fmtBytes(f.size), raw:f };
   document.getElementById('filePreviewBar').style.display = 'flex';
   document.getElementById('filePreviewName').textContent  = f.name;
   document.getElementById('filePreviewSize').textContent  = fmtBytes(f.size);
@@ -1388,7 +756,6 @@ function handleFileSelect(e) {
   updateSendBtn();
   toast(`📎 ${f.name} attached`);
 }
-
 function removeFile() {
   pendingFile = null;
   document.getElementById('fileInput').value = '';
@@ -1397,376 +764,123 @@ function removeFile() {
   updateSendBtn();
 }
 
-/* ─────────────────────────────────────────────────
-   Input handling
-───────────────────────────────────────────────── */
+/* ─── Input ─── */
 function updateSendBtn() {
-  const inp  = document.getElementById('msg-input');
-  const btn  = document.getElementById('sendBtn');
-  const hasText = inp.value.trim().length > 0;
-  const hasFile = !!pendingFile;
-  btn.disabled  = (!hasText && !hasFile) || isTyping;
+  const inp = document.getElementById('msg-input');
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = (!inp.value.trim() && !pendingFile) || isTyping;
 }
-
 function autoResize(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 180) + 'px';
-  updateSendBtn();
+  el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,180)+'px'; updateSendBtn();
 }
-
 function handleKeyDown(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    if (!document.getElementById('sendBtn').disabled) sendMessage();
-  }
+  if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); if (!document.getElementById('sendBtn').disabled) sendMessage(); }
 }
-
 function usePrompt(text) {
   const inp = document.getElementById('msg-input');
-  inp.value = text;
-  autoResize(inp);
-  inp.focus();
+  inp.value = text; autoResize(inp); inp.focus();
 }
 
-/* ─────────────────────────────────────────────────
-   Send message
-───────────────────────────────────────────────── */
+/* ─── Send message ─── */
 function sendMessage() {
   const inp  = document.getElementById('msg-input');
   const text = inp.value.trim();
   if ((!text && !pendingFile) || isTyping) return;
 
-  // Ensure session
   if (!currentId) newSession();
-
   const s = getSession();
   if (!s) return;
 
-  // Build user message
   const userMsg = {
-    id: uid(), role: 'user', text: text || '(See attached file)',
-    file: pendingFile ? { name: pendingFile.name, size: pendingFile.size } : null,
-    ts: Date.now()
+    id:uid(), role:'user',
+    text: text || '(See attached file)',
+    file: pendingFile ? { name:pendingFile.name, size:pendingFile.size } : null,
+    ts:Date.now()
   };
   s.messages.push(userMsg);
-
-  // Update session title from first real message
   if (s.messages.length === 1) {
-    s.title = (pendingFile ? `📎 ${pendingFile.name.replace('.pdf','')}` : text.slice(0,42) + (text.length>42?'…':''));
+    s.title = pendingFile ? `📎 ${pendingFile.name.replace('.pdf','')}` : text.slice(0,42)+(text.length>42?'…':'');
     document.getElementById('chatTitleTop').textContent = s.title;
   }
-  s.updatedAt = Date.now();
-  save();
-  renderSidebar();
-
-  // Render user msg
+  s.updatedAt = Date.now(); save(); renderSidebar();
   appendMsg(userMsg);
 
-  // Clear
-  inp.value = '';
-  inp.style.height = 'auto';
-  updateSendBtn();
-
-  // AI response
-  showTyping();
-  isTyping = true;
+  inp.value = ''; inp.style.height = 'auto'; updateSendBtn();
+  showTyping(); isTyping = true;
   document.getElementById('sendBtn').disabled = true;
+  document.getElementById('sessionLabel').textContent = 'Analyzing…';
 
-// -------------------------------
-// Send PDF to backend API
-// -------------------------------
+  /* ── POST to /extract ── */
+  const formData = new FormData();
+  if (pendingFile && pendingFile.raw) formData.append('file', pendingFile.raw);
 
-// -------------------------------
-// Send PDF to backend
-// -------------------------------
+  fetch('/extract', { method:'POST', body:formData })
+    .then(res => {
+      if (!res.ok) return res.json().then(d => Promise.reject(d));
+      return res.json();
+    })
+    .then(data => {
+      hideTyping();
 
-const formData = new FormData();
+      /* Build rich HTML from backend JSON */
+      const richHtml = buildExtractionHtml(data);
 
-if (pendingFile && pendingFile.raw) {
-  formData.append("file", pendingFile.raw);
+      /* Plain-text copy fallback */
+      const confPct = data.confidence != null ? Math.round(data.confidence*100) : 0;
+      const classif = data.classification_result?.details;
+
+      const plainText = [
+        `Trademark Extraction Report`,
+        `Serial: ${data.serial_number||'N/A'} | Confidence: ${confPct}%`,
+        `Applicant: ${data.applicant_name||'—'} | Mark: ${data.mark_text||'—'}`,
+        `Classes: ${(data.classes||[]).join(', ')||'None'}`,
+        classif ? `Assessment: ${classif.claimedClassStatus} (Suggested: ${classif.suggestedClass})` : '',
+        data.identification_text ? `Goods/Services: ${data.identification_text.slice(0,200)}` : '',
+      ].filter(Boolean).join('\n');
+
+      const aiMsg = { id:uid(), role:'ai', text:plainText, richHtml, ts:Date.now() };
+      s.messages.push(aiMsg);
+      s.updatedAt = Date.now(); save();
+
+      appendMsg(aiMsg);
+      removeFile();
+      isTyping = false;
+      updateSendBtn();
+      document.getElementById('sessionLabel').textContent = 'Ready';
+    })
+    .catch(err => {
+      hideTyping();
+      const errText = err && err.error ? err.error : (err.message || 'Unknown error');
+      const aiMsg = {
+        id:uid(), role:'ai',
+        text:`## ⚠ Processing Error\n\n\`${errText}\`\n\nPlease ensure you've attached a valid trademark PDF and the backend server is running.`,
+        ts:Date.now()
+      };
+      s.messages.push(aiMsg); s.updatedAt = Date.now(); save();
+      appendMsg(aiMsg);
+      isTyping = false; updateSendBtn();
+      document.getElementById('sessionLabel').textContent = 'Error';
+    });
 }
 
-fetch("/extract", {
-  method: "POST",
-  body: formData
-})
-
-.then(res => res.json())
-.then(data => {
-
-  hideTyping();
-
-  const aiMsg = {
-    id: uid(),
-    role: "ai",
-    text: "PDF processed successfully.",
-    ts: Date.now()
-  };
-
-  s.messages.push(aiMsg);
-  s.updatedAt = Date.now();
-  save();
-
-  appendMsg(aiMsg);
-  removeFile();   
-  isTyping = false;
-  updateSendBtn();
-})
-.catch(err => {
-
-  hideTyping();
-
-  const aiMsg = {
-    id: uid(),
-    role: "ai",
-    text: "Backend error while processing PDF.",
-    ts: Date.now()
-  };
-
-  appendMsg(aiMsg);
-
-  isTyping = false;
-  updateSendBtn();
-});
-}
-
-/* ─────────────────────────────────────────────────
-   Typing indicator
-───────────────────────────────────────────────── */
+/* ─── Typing indicator ─── */
 function showTyping() {
   const listEl = document.getElementById('messagesList');
+  document.getElementById('welcomeScreen').style.display = 'none';
+  listEl.style.display = 'block';
   const div = document.createElement('div');
-  div.className = 'typing-row';
-  div.id = 'typingIndicator';
-  div.innerHTML = `<div class="typing-bubble">
-    <div class="typing-dot"></div>
-    <div class="typing-dot"></div>
-    <div class="typing-dot"></div>
-  </div>`;
-  listEl.appendChild(div);
-  scrollBottom();
+  div.className = 'typing-row'; div.id = 'typingIndicator';
+  div.innerHTML = `<div class="typing-bubble"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+  listEl.appendChild(div); scrollBottom();
 }
-function hideTyping() {
-  const t = document.getElementById('typingIndicator');
-  if (t) t.remove();
-}
+function hideTyping() { const t = document.getElementById('typingIndicator'); if (t) t.remove(); }
 
-/* ─────────────────────────────────────────────────
-   Demo AI responses
-───────────────────────────────────────────────── */
-function generateDemoResponse(text, file) {
-  const lc = (text||'').toLowerCase();
-
-  if (file) {
-    return `## Trademark Risk Analysis Report
-
-**Document Received:** \`${file.name}\` (${file.size})
-
----
-
-### Executive Summary
-
-I've processed the uploaded trademark application. Here is a preliminary risk assessment based on the application details:
-
-**Overall Risk Level:** [MEDIUM RISK]
-
----
-
-### 1. Distinctiveness Assessment
-
-The mark appears to fall in the **suggestive** category on the distinctiveness spectrum, which generally receives protection but may face challenges if examiners determine it is descriptive of the goods/services identified.
-
-| Factor | Finding | Risk |
-|--------|---------|------|
-| Inherent Distinctiveness | Suggestive | Medium |
-| Acquired Distinctiveness | Insufficient data | Unknown |
-| Descriptiveness Risk | Moderate | Medium |
-
----
-
-### 2. Likelihood of Confusion Search
-
-Based on preliminary search parameters, I identified **3 potentially conflicting registrations** in the same international class:
-
-- **Mark A** (Reg. No. 5,234,891) — phonetically similar, same class [HIGH RISK]
-- **Mark B** (Reg. No. 4,987,234) — visually similar logo element [MEDIUM RISK]
-- **Mark C** (Reg. No. 6,102,445) — overlapping goods specification [LOW RISK]
-
----
-
-### 3. Classification & Specification Review
-
-> The goods/services description may be overly broad and could trigger a specimen requirement or office action requesting limitation.
-
-**Recommendation:** Narrow the specification to specific goods to reduce vulnerability to third-party oppositions.
-
----
-
-### 4. Recommended Next Steps
-
-1. Conduct full knock-out search across USPTO TESS and EUIPO databases
-2. Obtain legal opinion on likelihood of confusion with Mark A
-3. Revise goods/services description to be more specific
-4. Consider filing intent-to-use application with narrowed scope
-
----
-
-*This analysis is for informational purposes only. Full legal advice should be obtained from a licensed trademark attorney before filing.*`;
-  }
-
-  if (lc.includes('confusion') || lc.includes('conflicting')) {
-    return `## Likelihood of Confusion Analysis
-
-[MEDIUM RISK]
-
-When assessing likelihood of confusion, I examine the **DuPont factors** established in *In re E. I. du Pont de Nemours & Co.*:
-
-### Key Factors Evaluated
-
-**Similarity of the Marks**
-The marks are compared in terms of appearance, sound, and commercial impression. A side-by-side comparison is not the standard — the key is whether an ordinary consumer would be confused upon encountering the marks separately in the marketplace.
-
-**Relatedness of Goods/Services**
-Even marks that are not identical may cause confusion if the goods are closely related or travel in the same trade channels.
-
-**Strength of the Prior Mark**
-\`\`\`
-Strong mark (fanciful/arbitrary) → Broader scope of protection
-Weak mark (descriptive/generic)  → Narrower scope of protection
-\`\`\`
-
-### Preliminary Findings
-
-| DuPont Factor | Assessment | Weight |
-|---------------|------------|--------|
-| Mark similarity | Moderate overlap | High |
-| Goods relatedness | Same class | High |
-| Trade channels | Overlapping | Medium |
-| Purchaser sophistication | General public | High |
-| Prior mark strength | Above average | High |
-
-**Conclusion:** A likelihood of confusion refusal under §2(d) is probable based on the current record. I recommend amending the identification of goods to reduce overlap.`;
-  }
-
-  if (lc.includes('classification') || lc.includes('class') || lc.includes('specification')) {
-    return `## Classification & Specification Review
-
-### International Class Analysis
-
-Based on the application, the goods and services span multiple Nice Classification classes. Here's my review:
-
-**Class 35 — Advertising & Business Services** [LOW RISK]
-The specification is adequately defined. No immediate issues detected.
-
-**Class 42 — Technology & Software Services** [HIGH RISK]
-> The description "software as a service (SaaS)" may be considered overly broad by USPTO examiners. A more specific recitation is recommended.
-
-### Recommended Specification Language
-
-Instead of:
-\`\`\`
-"Computer software services; software as a service"
-\`\`\`
-
-Consider:
-\`\`\`
-"Software as a service (SaaS) services featuring software
-for [specific function] in the field of [specific industry]"
-\`\`\`
-
-### ID Manual Cross-Check
-
-The following terms from your application were cross-referenced against the USPTO Trademark ID Manual:
-
-| Term | Status | Action Required |
-|------|--------|-----------------|
-| "Software services" | ⚠ Broad | Narrow with qualifier |
-| "Business consulting" | ✓ Acceptable | None |
-| "Marketing services" | ✓ Acceptable | None |
-| "AI-powered analytics" | ⚠ Novel term | Define scope |
-
-**Overall Recommendation:** Amend the identification before examination to reduce the risk of a §2(e)(1) office action.`;
-  }
-
-  if (lc.includes('risk') || lc.includes('report') || lc.includes('assessment')) {
-    return `## Full Trademark Risk Assessment
-
-**Prepared by:** Jade AI Trademark Analyst
-**Analysis Date:** ${new Date().toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'})}
-
----
-
-### Overall Risk Score
-
-[MEDIUM RISK] — Score: **6.2 / 10**
-
----
-
-### Risk Matrix
-
-| Category | Risk Level | Priority |
-|----------|-----------|----------|
-| Likelihood of Confusion | [MEDIUM RISK] | High |
-| Descriptiveness Refusal | [LOW RISK] | Medium |
-| Classification Issues | [MEDIUM RISK] | Medium |
-| Geographic Indicators | [LOW RISK] | Low |
-| Prior User Claims | [HIGH RISK] | Critical |
-
----
-
-### Critical Issues Requiring Immediate Attention
-
-1. **Prior User Conflict (Critical)**
-   An unregistered prior user in the same geographic market may have common law rights. Investigation recommended before filing.
-
-2. **Specimen Adequacy**
-   The current specimen may not demonstrate use in commerce as required by §1(a) applications.
-
----
-
-### Prosecution Strategy Recommendations
-
-**Option A — File with Current Mark** (Lower cost, higher risk)
-Proceed with current application but anticipate office actions.
-
-**Option B — Modify Mark + Narrow Goods** (Balanced approach)
-Slight stylization change + narrowed specification reduces confusion likelihood by ~40%.
-
-**Option C — Comprehensive Clearance Search First** (Recommended)
-Commission full professional search before filing to identify all potential conflicts.
-
----
-
-*Estimated timeline to registration: **12–18 months** (if no significant office actions)*`;
-  }
-
-  // Default
-  return `Thank you for your question about trademark analysis.
-
-I'm Jade, your AI trademark risk analyst. I can help you with:
-
-- **Likelihood of confusion** analysis against existing registrations
-- **Classification and specification** review for proper Nice class assignment
-- **Distinctiveness assessment** along the fanciful–generic spectrum
-- **Full risk reports** covering prosecution strategy and recommendations
-- **Office action response** strategy and argument frameworks
-
-To get the most comprehensive analysis, please **upload your trademark application PDF** using the attachment button, and I'll provide a detailed risk assessment tailored to your specific filing.
-
-Is there a particular aspect of your trademark application you'd like to focus on first?`;
-}
-
-/* ─────────────────────────────────────────────────
-   Copy helpers
-───────────────────────────────────────────────── */
+/* ─── Copy ─── */
 function copyMsg(id) {
-  const s = getSession();
-  if (!s) return;
-  const m = s.messages.find(x => x.id === id);
-  if (!m) return;
+  const s = getSession(); if (!s) return;
+  const m = s.messages.find(x => x.id===id); if (!m) return;
   navigator.clipboard.writeText(m.text).then(() => toast('Copied to clipboard'));
 }
-
 function copyCode(btn) {
   const code = btn.closest('.code-block').querySelector('code').textContent;
   navigator.clipboard.writeText(code).then(() => {
@@ -1777,49 +891,28 @@ function copyCode(btn) {
   });
 }
 
-/* ─────────────────────────────────────────────────
-   Utility actions
-───────────────────────────────────────────────── */
+/* ─── Utilities ─── */
 function clearCurrentChat() {
   if (!currentId) return;
-  const s = getSession();
-  if (!s || !s.messages.length) return;
-  s.messages = [];
-  s.updatedAt = Date.now();
-  save();
-  renderMessages([]);
-  toast('Chat cleared');
+  const s = getSession(); if (!s || !s.messages.length) return;
+  s.messages=[]; s.updatedAt=Date.now(); save(); renderMessages([]); toast('Chat cleared');
 }
-
 function exportConversation() {
   const s = getSession();
   if (!s || !s.messages.length) { toast('Nothing to export'); return; }
-  const txt = s.messages.map(m => `[${m.role === 'user' ? 'You' : 'Jade AI'}] ${fmtTime(m.ts)}\n${m.text}`).join('\n\n─────────────\n\n');
-  const blob = new Blob([txt], { type: 'text/plain' });
+  const txt = s.messages.map(m => `[${m.role==='user'?'You':'Jade AI'}] ${fmtTime(m.ts)}\n${m.text}`).join('\n\n─────────────\n\n');
+  const blob = new Blob([txt],{type:'text/plain'});
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `jade-analysis-${Date.now()}.txt`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-  toast('Exported successfully');
+  a.href = URL.createObjectURL(blob); a.download=`jade-analysis-${Date.now()}.txt`;
+  a.click(); URL.revokeObjectURL(a.href); toast('Exported successfully');
 }
 
-/* ─────────────────────────────────────────────────
-   Init
-───────────────────────────────────────────────── */
+/* ─── Init ─── */
 document.getElementById('newChatBtn').addEventListener('click', newSession);
-
 document.getElementById('msg-input').addEventListener('input', updateSendBtn);
-
 renderSidebar();
-
-// Load most recent session if exists
-if (sessions.length) {
-  loadSession(sessions[0].id);
-} else {
-  document.getElementById('welcomeScreen').style.display = 'flex';
-  document.getElementById('messagesList').style.display  = 'none';
-}
+if (sessions.length) { loadSession(sessions[0].id); }
+else { document.getElementById('welcomeScreen').style.display='flex'; document.getElementById('messagesList').style.display='none'; }
 </script>
 </body>
 </html>
