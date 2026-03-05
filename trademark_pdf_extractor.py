@@ -13,11 +13,13 @@ from datetime import date
 from dateutil import parser as dateparser
 from typing import List, Dict, Any, Tuple
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi import BackgroundTasks
 import requests
 import pdfplumber
 import fitz
-import pandas as pd
-TM_OUTPUT_DIR = "TM"
+
+TM_OUTPUT_DIR = os.getenv("TM_OUTPUT_DIR", "TM")
 
 os.makedirs(TM_OUTPUT_DIR, exist_ok=True)
 
@@ -180,7 +182,7 @@ class PDFProcessor:
                 except Exception:
                     pass
 
-        if _HAS_CAMELOT:
+        if _HAS_CAMELOT and os.environ.get("ENABLE_CAMELOT") == "1":
 
             try:
 
@@ -208,8 +210,9 @@ class PDFProcessor:
 
     def extract_identification_block(self, text):
 
+        
         pattern = re.compile(
-            r'Identification of goods and services.*?\n(.*?)\n(?:Additional statements|Translation|Correspondence information)',
+            r'Identification of goods and services(.*?)(?:Additional statements|Translation|Correspondence information)',
             re.I | re.S
         )
 
@@ -248,7 +251,12 @@ class PDFProcessor:
         m = CLASS_RE.search(text)
         if m:
             nums = re.findall(r'\b\d{1,3}\b', m.group(2))
-            out["classes"] = [int(n.lstrip("0")) for n in nums]
+            classes = []
+            for n in nums:
+                val = int(n)
+                if 1 <= val <= 45:
+                    classes.append(val)
+            out["classes"] =  list(set(classes))
 
         m = BASIS_RE.search(text)
         if m:
@@ -426,9 +434,12 @@ def forward_json_to_server(data: dict):
         }
 @app.post("/extract")
 
-async def extract_pdf(file: UploadFile = File(...)):
+async def extract_pdf(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...)
+):
 
-    if not file.filename.lower().endswith(".pdf"):
+    if not file.filename.lower().endswith(".pdf") or file.content_type != "application/pdf":
         return JSONResponse(
             {"error": "only pdf allowed"},
             status_code=400
@@ -445,9 +456,7 @@ async def extract_pdf(file: UploadFile = File(...)):
         
         result = processor.process_pdf(tmp_path)
         # send json to second backend
-        forward_status = forward_json_to_server(result)
-
-        result["forward_status"] = forward_status
+        background_tasks.add_task(forward_json_to_server, result)
 
 # -----------------------------
 # Save JSON output
@@ -478,4 +487,19 @@ async def extract_pdf(file: UploadFile = File(...)):
         except Exception:
             pass
 
+
     return JSONResponse(result)
+@app.get("/")
+def serve_frontend():
+    return FileResponse(
+        os.path.join(os.getcwd(), "taraai.html")
+    )
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+@app.get("/version")
+def version():
+    return {
+        "service": "trademark_pdf_extractor",
+        "version": "1.0"
+    }
