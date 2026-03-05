@@ -1486,7 +1486,7 @@ if (pendingFile && pendingFile.raw) {
   formData.append("file", pendingFile.raw);
 }
 
-fetch("http://127.0.0.1:8000/extract", {
+fetch("/extract", {
   method: "POST",
   body: formData
 })
