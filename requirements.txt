@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pdfplumber
+pymupdf
+spacy
+python-multipart
+python-dateutil
+pandas
+requests
