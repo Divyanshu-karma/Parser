@@ -489,6 +489,7 @@ async def extract_pdf(
         
         result = processor.process_pdf(tmp_path)
         mark_text = result.get("mark_text", "")
+        print("EXTRACTED MARK:", mark_text)
         classes = result.get("classes", [])
         class_number = classes[0] if classes else None
 
@@ -588,6 +589,7 @@ def version():
         "service": "trademark_pdf_extractor",
         "version": "1.0"
     }
+
 
 
 
