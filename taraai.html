@@ -919,7 +919,7 @@ if (data.mark_analysis && Array.isArray(data.mark_analysis) && data.mark_analysi
         <button
           id="conflictToggleBtn"
           onclick="toggleAllConflicts(this)"
-          data-full='${escHtml(JSON.stringify(sorted.slice(10)))}'
+          data-full='${escHtml(JSON.stringify(sorted.slice(10))).replace(/'/g,"&#39;")}'
           data-applied='${escHtml(sorted[0]?.applied_mark || "")}'
           style="width:100%;padding:8px;background:var(--jade-50);border:1px solid var(--jade-200);
                  border-radius:var(--radius-sm);font-size:13px;font-weight:500;
