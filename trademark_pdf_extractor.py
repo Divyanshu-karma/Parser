@@ -432,38 +432,66 @@ def forward_json_to_server(data: dict):
             "status": "failed",
             "error": str(e)
         }
+# ══════════════════════════════════════════════════════════════
+# PATCH for trademark_pdf_extractor.py
+# Find the function forward_mark_text_to_server() and replace it
+# entirely with the version below.
+# ══════════════════════════════════════════════════════════════
 
 def forward_mark_text_to_server(mark_text: str):
     """
-    Sends trademark mark text to HuggingFace mark conflict backend
-    and returns the response exactly as received.
+    Sends extracted mark_text from a PDF to the HuggingFace
+    'nevergiveup' Space REST API ( POST /search ).
+
+    The HF Space auto-assigns filing_status = "active".
+
+    Returns a list of conflict records:
+    [
+      {
+        "applied_mark":     str,
+        "conflicting_mark": str,
+        "serial":           str,
+        "score":            float,   # 0.0 – 1.0
+        "risk":             str,     # "HIGH" | "MEDIUM" | "LOW"
+        "explanation":      str,
+        "visual_score":     float,
+        "phonetic_score":   float,
+        "meaning_score":    float,
+      },
+      ...
+    ]
     """
 
-    MARK_API = "https://divya-nshu99-tmconflict.hf.space/search"
+    # ── URL: your HF Space REST endpoint ──────────────────────
+    MARK_API = "https://divya-nshu99-nevergiveup.hf.space/search"
+    # ─────────────────────────────────────────────────────────
 
     try:
         response = requests.post(
             MARK_API,
-            json={"mark_text": mark_text, "filing_status": "active"},
-            timeout=30
+            json={
+                "mark_text":      mark_text,
+                "filing_status":  "active"    # always active for PDF conflict check
+            },
+            timeout=60              # HF cold-start can be slow — give it time
         )
 
         response.raise_for_status()
 
         data = response.json()
 
-        # Ensure we return exactly the list returned by HF backend
         if isinstance(data, list):
             return data
 
-        # fallback safety
+        # Safety fallback
         return []
 
     except requests.exceptions.RequestException as e:
         return [{
             "status": "failed",
-            "error": str(e)
+            "error":  str(e)
         }]
+
 
 @app.post("/extract")
 
@@ -589,6 +617,7 @@ def version():
         "service": "trademark_pdf_extractor",
         "version": "1.0"
     }
+
 
 
 
