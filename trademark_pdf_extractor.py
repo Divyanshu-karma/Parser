@@ -1,7 +1,6 @@
-#backend- trademark_pdf_extractor.py
-
+# trademark_pdf_extractor.py
 """
-Ultimate Trademark PDF Analysis System (Improved)
+Ultimate Trademark PDF Analysis System
 """
 import asyncio
 import os
@@ -20,7 +19,6 @@ import pdfplumber
 import fitz
 
 TM_OUTPUT_DIR = os.getenv("TM_OUTPUT_DIR", "TM")
-
 os.makedirs(TM_OUTPUT_DIR, exist_ok=True)
 
 try:
@@ -35,9 +33,9 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
 
 
-# -----------------------------
+# ─────────────────────────────────────────────────────────────────────────────
 # Regex Rules
-# -----------------------------
+# ─────────────────────────────────────────────────────────────────────────────
 
 SERIAL_RE = re.compile(r'\bSerial(?:\s+Number)?[:\s]*([0-9]{8})\b', re.I)
 
@@ -77,7 +75,6 @@ IDENT_PLACEHOLDER = re.compile(
     re.I
 )
 
-
 LABEL_MAP = {
     'filing basis': 'filing_basis',
     'filing basis information': 'filing_basis',
@@ -91,9 +88,9 @@ LABEL_MAP = {
 }
 
 
-# -----------------------------
+# ─────────────────────────────────────────────────────────────────────────────
 # Font helpers
-# -----------------------------
+# ─────────────────────────────────────────────────────────────────────────────
 
 def normalize_fontname(fontname: str) -> str:
     if not fontname:
@@ -108,136 +105,68 @@ def is_bold_fontname(fontname: str) -> bool:
     return "bold" in fn or "black" in fn
 
 
-# -----------------------------
-# Processor
-# -----------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# PDF Processor
+# ─────────────────────────────────────────────────────────────────────────────
 
 class PDFProcessor:
 
     def __init__(self):
         self.nlp = spacy.blank("en")
-
         ruler = self.nlp.add_pipe("entity_ruler")
-
         patterns = [
-            {"label": "FILING_BASIS", "pattern": [{"LOWER": "filing"}, {"LOWER": "basis"}]},
+            {"label": "FILING_BASIS",  "pattern": [{"LOWER": "filing"}, {"LOWER": "basis"}]},
             {"label": "SERIAL_NUMBER", "pattern": [{"LOWER": "serial"}, {"LOWER": "number"}]},
-            {"label": "APPLICANT", "pattern": [{"LOWER": "applicant"}]},
+            {"label": "APPLICANT",     "pattern": [{"LOWER": "applicant"}]},
         ]
-
         ruler.add_patterns(patterns)
 
-    # -----------------------------
-    # PDF Text Extraction
-    # -----------------------------
-
     def extract_with_pdfplumber(self, path):
-
         pages = []
         full_text = []
-
         with pdfplumber.open(path) as pdf:
-
             for pno, page in enumerate(pdf.pages, start=1):
-
                 text = page.extract_text() or ""
                 full_text.append(text)
-
-                pages.append({
-                    "page": pno,
-                    "width": page.width,
-                    "height": page.height
-                })
-
-        return {
-            "pages": pages,
-            "raw_text": "\n\n".join(full_text)
-        }
-
-    # -----------------------------
-    # Table extraction
-    # -----------------------------
+                pages.append({"page": pno, "width": page.width, "height": page.height})
+        return {"pages": pages, "raw_text": "\n\n".join(full_text)}
 
     def extract_tables(self, path):
-
         tables = []
-
         with pdfplumber.open(path) as pdf:
-
             for pno, page in enumerate(pdf.pages, start=1):
-
                 try:
                     tbls = page.find_tables()
-
                     for t in tbls:
-
                         table = t.extract()
-
                         if table:
-                            tables.append({
-                                "page": pno,
-                                "rows": table
-                            })
-
+                            tables.append({"page": pno, "rows": table})
                 except Exception:
                     pass
 
         if _HAS_CAMELOT and os.environ.get("ENABLE_CAMELOT") == "1":
-
             try:
-
-                camelot_tables = camelot.read_pdf(
-                    path,
-                    pages="all",
-                    flavor="stream"
-                )
-
+                camelot_tables = camelot.read_pdf(path, pages="all", flavor="stream")
                 for t in camelot_tables:
-
-                    tables.append({
-                        "page": int(t.page),
-                        "rows": t.df.values.tolist()
-                    })
-
+                    tables.append({"page": int(t.page), "rows": t.df.values.tolist()})
             except Exception:
                 pass
 
         return tables
 
-    # -----------------------------
-    # Identification block
-    # -----------------------------
-
     def extract_identification_block(self, text):
-
-        
         pattern = re.compile(
             r'Identification of goods and services(.*?)(?:Additional statements|Translation|Correspondence information)',
             re.I | re.S
         )
-
         m = pattern.search(text)
-
         if not m:
             return ""
-
         block = m.group(1)
-
-        block = re.sub(
-            r'International Class\s+\d+\s*',
-            '',
-            block,
-            flags=re.I
-        )
-
+        block = re.sub(r'International Class\s+\d+\s*', '', block, flags=re.I)
         return block.strip()
 
-    # -----------------------------
-    # Text field detection
-    # -----------------------------
-
     def find_fields_in_text(self, text):
-
         out = {}
 
         m = SERIAL_RE.search(text)
@@ -256,7 +185,7 @@ class PDFProcessor:
                 val = int(n)
                 if 1 <= val <= 45:
                     classes.append(val)
-            out["classes"] =  list(set(classes))
+            out["classes"] = list(set(classes))
 
         m = BASIS_RE.search(text)
         if m:
@@ -277,129 +206,84 @@ class PDFProcessor:
 
         return out
 
-    # -----------------------------
-    # Date Parsing
-    # -----------------------------
-
     def safe_parse_date(self, txt):
-
         try:
-
             txt = re.sub(r'\bET\b', '', txt)
             txt = re.sub(r'\bat\b', '', txt)
-
             d = dateparser.parse(txt, fuzzy=True)
-
             if d:
                 return d.date().isoformat()
-
-        except:
+        except Exception:
             pass
-
         return None
 
-    # -----------------------------
-    # Validation
-    # -----------------------------
-
     def validate(self, extracted):
-
         errors = []
         warnings = []
 
         sn = extracted.get("serial_number")
-
         if not sn or not re.fullmatch(r"\d{8}", str(sn)):
             errors.append("serial_number_format")
 
         fd = extracted.get("filing_date")
-
         if not fd:
             errors.append("filing_date_missing")
 
         classes = extracted.get("classes", [])
-
         if classes:
             try:
                 if any(int(c) < 1 or int(c) > 45 for c in classes):
                     errors.append("class_number_invalid")
-            except:
+            except Exception:
                 errors.append("class_number_invalid")
-            
         else:
             warnings.append("no_classes_found")
 
         ident = extracted.get("identification_text")
-
         if not ident:
             errors.append("identification_missing")
-
         elif IDENT_PLACEHOLDER.search(ident):
             errors.append("identification_placeholder")
 
         return errors, warnings
 
-    # -----------------------------
-    # Main pipeline
-    # -----------------------------
-
     def process_pdf(self, path):
-
-        plumb = self.extract_with_pdfplumber(path)
-
-        text = plumb["raw_text"]
-
-        tables = self.extract_tables(path)
-
+        plumb     = self.extract_with_pdfplumber(path)
+        text      = plumb["raw_text"]
+        tables    = self.extract_tables(path)
         extracted = {}
 
-        # text fields
         extracted.update(self.find_fields_in_text(text))
 
-        # identification block
         ident = self.extract_identification_block(text)
-
         if ident:
             extracted["identification_text"] = ident
 
-        extracted["tables"] = tables
-
+        extracted["tables"]           = tables
         extracted["raw_text_snippet"] = text[:3000]
 
         errors, warnings = self.validate(extracted)
-
-        extracted["errors"] = errors
-        extracted["warnings"] = warnings
-
+        extracted["errors"]     = errors
+        extracted["warnings"]   = warnings
         extracted["confidence"] = self.simple_confidence(extracted)
 
         return extracted
 
     def simple_confidence(self, extracted):
-
         score = 0.5
-
-        for k in [
-            "serial_number",
-            "filing_date",
-            "filing_basis",
-            "applicant_name",
-            "identification_text"
-        ]:
+        for k in ["serial_number", "filing_date", "filing_basis",
+                  "applicant_name", "identification_text"]:
             if extracted.get(k):
                 score += 0.1
-
         score -= 0.2 * len(extracted.get("errors", []))
-
         return max(0.0, min(0.99, round(score, 2)))
 
 
-# -----------------------------
-# FastAPI
-# -----------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# FastAPI app
+# ─────────────────────────────────────────────────────────────────────────────
 
 app = FastAPI(title="Trademark PDF Extractor")
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -407,45 +291,50 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-processor = PDFProcessor()
-def forward_json_to_server(data: dict):
-    """
-    Sends extracted JSON to the Hugging Face classification backend
-    and returns the classifier response.
-    """
 
+processor = PDFProcessor()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Backend 1 — Classification (divya-nshu99-pk.hf.space)
+# Receives: { class_number, identification }
+# Returns:  classification result dict
+# ─────────────────────────────────────────────────────────────────────────────
+
+def forward_json_to_server(data: dict) -> dict:
+    """
+    Sends class_number + identification text to the HF classification backend.
+    Called concurrently with forward_mark_text_to_server.
+    Result is displayed FIRST in the frontend chatbox (Section 4).
+    """
     TARGET_API = "https://divya-nshu99-pk.hf.space/classify"
 
     try:
-        response = requests.post(
-            TARGET_API,
-            json=data,
-            timeout=30
-        )
-
+        response = requests.post(TARGET_API, json=data, timeout=30)
         response.raise_for_status()
-
         return response.json()
 
     except requests.exceptions.RequestException as e:
-        return {
-            "status": "failed",
-            "error": str(e)
-        }
-# ══════════════════════════════════════════════════════════════
-# PATCH for trademark_pdf_extractor.py
-# Find the function forward_mark_text_to_server() and replace it
-# entirely with the version below.
-# ══════════════════════════════════════════════════════════════
+        return {"status": "failed", "error": str(e)}
 
-def forward_mark_text_to_server(mark_text: str):
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Backend 2 — Mark Conflict (divya-nshu99-nevergiveup.hf.space)
+# Receives: { mark_text, filing_status: "active" }
+# Returns:  list of conflict records sorted by composite score
+# ─────────────────────────────────────────────────────────────────────────────
+
+def forward_mark_text_to_server(mark_text: str) -> list:
     """
-    Sends extracted mark_text from a PDF to the HuggingFace
-    'nevergiveup' Space REST API ( POST /search ).
+    Sends extracted mark_text to the HF 'nevergiveup' Space REST API (POST /search).
 
-    The HF Space auto-assigns filing_status = "active".
+    filing_status is always "active" — auto-assigned here, not sent from frontend.
 
-    Returns a list of conflict records:
+    Called concurrently with forward_json_to_server.
+    Result is displayed SECOND in the frontend chatbox (Section 7),
+    AFTER the classification result — even though both run at the same time.
+
+    Returns list of:
     [
       {
         "applied_mark":     str,
@@ -457,123 +346,138 @@ def forward_mark_text_to_server(mark_text: str):
         "visual_score":     float,
         "phonetic_score":   float,
         "meaning_score":    float,
-      },
-      ...
+      }, ...
     ]
     """
-
-    # ── URL: your HF Space REST endpoint ──────────────────────
     MARK_API = "https://divya-nshu99-nevergiveup.hf.space/search"
-    # ─────────────────────────────────────────────────────────
 
     try:
         response = requests.post(
             MARK_API,
             json={
-                "mark_text":      mark_text,
-                "filing_status":  "active"    # always active for PDF conflict check
+                "mark_text":     mark_text,
+                "filing_status": "active"    # always active for PDF conflict check
             },
-            timeout=60              # HF cold-start can be slow — give it time
+            timeout=60    # HF cold-start can take up to ~30s — give generous timeout
         )
 
         response.raise_for_status()
 
         data = response.json()
 
+        # HF /search always returns a list — safety check
         if isinstance(data, list):
             return data
 
-        # Safety fallback
         return []
 
     except requests.exceptions.RequestException as e:
-        return [{
-            "status": "failed",
-            "error":  str(e)
-        }]
+        return [{"status": "failed", "error": str(e)}]
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Async wrappers
+# (run_in_executor lets blocking requests.post run in a thread
+#  without blocking the async FastAPI event loop)
+# ─────────────────────────────────────────────────────────────────────────────
+
+async def call_classification_backend(payload: dict) -> dict:
+    """Async wrapper for forward_json_to_server."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, forward_json_to_server, payload)
+
+
+async def call_mark_backend(mark_text: str) -> list:
+    """Async wrapper for forward_mark_text_to_server."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, forward_mark_text_to_server, mark_text)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# /extract endpoint
+# ─────────────────────────────────────────────────────────────────────────────
 
 @app.post("/extract")
-
 async def extract_pdf(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...)
 ):
-
     if not file.filename.lower().endswith(".pdf") or file.content_type != "application/pdf":
-        return JSONResponse(
-            {"error": "only pdf allowed"},
-            status_code=400
-        )
+        return JSONResponse({"error": "only pdf allowed"}, status_code=400)
 
     contents = await file.read()
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tf:
-
         tf.write(contents)
         tmp_path = tf.name
 
     try:
-        
-        result = processor.process_pdf(tmp_path)
-        mark_text = result.get("mark_text", "")
-        print("EXTRACTED MARK:", mark_text)
-        classes = result.get("classes", [])
+        # ── Step 1: Extract fields from PDF ──────────────────────────────────
+        result     = processor.process_pdf(tmp_path)
+        mark_text  = result.get("mark_text", "")
+        classes    = result.get("classes", [])
         class_number = classes[0] if classes else None
 
-        payload = {
-            "class_number": class_number,
+        print(f"EXTRACTED MARK: '{mark_text}'")
+
+        # ── Step 2: Build payloads ────────────────────────────────────────────
+        classification_payload = {
+            "class_number":  class_number,
             "identification": result.get("identification_text", "").replace("\n", " ")
         }
 
-        
-      
-        # -----------------------------
-# Run BOTH backend calls concurrently
-# -----------------------------
+        # ── Step 3: Fire BOTH backend calls at the same time ─────────────────
+        #
+        #   Both asyncio.create_task() calls are made BEFORE any await.
+        #   This means both HTTP requests start simultaneously.
+        #
+        #   We then await them IN ORDER:
+        #     - classification first  → goes into result["classification_result"]
+        #     - mark conflict second  → goes into result["mark_analysis"]
+        #
+        #   The frontend's buildExtractionHtml() renders them in the same order:
+        #     Section 4 = classification_result   (shown first in chatbox)
+        #     Section 7 = mark_analysis           (shown second in chatbox)
 
         classification_task = asyncio.create_task(
-            call_classification_backend(payload)
+            call_classification_backend(classification_payload)
         )
 
+        # Only start mark conflict task if mark_text was actually extracted
         if mark_text.strip():
             mark_task = asyncio.create_task(call_mark_backend(mark_text))
         else:
-            mark_task = asyncio.create_task(asyncio.sleep(0))
+            mark_task = None
 
-# first wait for classification
+        # ── Step 4: Collect results in display order ──────────────────────────
+
+        # Wait for classification → attach to result (displayed first)
         classification = await classification_task
         result["classification_result"] = classification
 
-# then wait for mark analysis
-        mark_response= await mark_task or []
+        # Wait for mark conflict → attach to result (displayed second)
+        if mark_task is not None:
+            mark_response = await mark_task
+            # Ensure it's always a list even if something unexpected happened
+            if not isinstance(mark_response, list):
+                mark_response = []
+        else:
+            mark_response = []
+            print("MARK TEXT empty — skipping conflict analysis")
 
-# -----------------------------
-# Save mark analysis separately
-# -----------------------------
+        result["mark_analysis"] = mark_response
 
+        # ── Step 5: Save mark analysis to its own file ────────────────────────
         serial = result.get("serial_number", f"tm_{int(time.time())}")
-
-        mark_filename = f"{serial}_mark_analysis.json"
+        mark_filename   = f"{serial}_mark_analysis.json"
         mark_output_path = os.path.join(TM_OUTPUT_DIR, mark_filename)
 
         with open(mark_output_path, "w", encoding="utf-8") as f:
             json.dump(mark_response, f, indent=2, ensure_ascii=False)
-        result["mark_analysis"] = mark_response
 
-
-       
-# -----------------------------
-# Save JSON output
-# -----------------------------
-
-        serial = result.get("serial_number")
-
-        if serial:
-            filename = f"{serial}.json"
-        else:
-            filename = f"tm_result_{int(time.time())}.json"
-
+        # ── Step 6: Save full result JSON ─────────────────────────────────────
+        serial   = result.get("serial_number")
+        filename = f"{serial}.json" if serial else f"tm_result_{int(time.time())}.json"
         output_path = os.path.join(TM_OUTPUT_DIR, filename)
 
         with open(output_path, "w", encoding="utf-8") as f:
@@ -582,50 +486,31 @@ async def extract_pdf(
         result["stored_json_path"] = output_path
 
     except Exception as e:
-
         return JSONResponse({"error": str(e)}, status_code=500)
 
     finally:
-
         try:
             os.unlink(tmp_path)
         except Exception:
             pass
 
-
     return JSONResponse(result)
-async def call_classification_backend(payload):
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, forward_json_to_server, payload)
 
 
-async def call_mark_backend(mark_text):
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, forward_mark_text_to_server, mark_text)    
+# ─────────────────────────────────────────────────────────────────────────────
+# Static routes
+# ─────────────────────────────────────────────────────────────────────────────
 
 @app.get("/")
 def serve_frontend():
-    return FileResponse(
-        os.path.join(os.getcwd(), "taraai.html")
-    )
+    return FileResponse(os.path.join(os.getcwd(), "taraai.html"))
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
 @app.get("/version")
 def version():
-    return {
-        "service": "trademark_pdf_extractor",
-        "version": "1.0"
-    }
-
-
-
-
-
-
-
-
-
-
-
-
+    return {"service": "trademark_pdf_extractor", "version": "1.0"}
