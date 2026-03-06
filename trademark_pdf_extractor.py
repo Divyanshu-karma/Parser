@@ -464,33 +464,7 @@ def forward_mark_text_to_server(mark_text: str):
             "status": "failed",
             "error": str(e)
         }]
-# def forward_mark_text_to_server(mark_text: str):
-#     """
-#     Sends trademark mark text to another backend service
-#     and returns its response.
-#     """
 
-#     MARK_API = "https://divya-nshu99-tmconflict.hf.space/search"
-
-#     try:
-#         response = requests.post(
-#             MARK_API,
-#             json={"mark_text": mark_text},
-#             timeout=30
-#         )
-
-#         response.raise_for_status()
-#         data = response.json()
-#         if not isinstance(data, list):
-#             return []
-
-#         return data
-
-#     except requests.exceptions.RequestException as e:
-#         return [{
-#             "status": "failed",
-#             "error": str(e)
-#         }]
 @app.post("/extract")
 
 async def extract_pdf(
@@ -536,14 +510,14 @@ async def extract_pdf(
         if mark_text.strip():
             mark_task = asyncio.create_task(call_mark_backend(mark_text))
         else:
-            mark_task = asyncio.create_task(asyncio.sleep(0, result=[]))
+            mark_task = asyncio.create_task(asyncio.sleep(0))
 
 # first wait for classification
         classification = await classification_task
         result["classification_result"] = classification
 
 # then wait for mark analysis
-        mark_response = await mark_task
+        mark_response= await mark_task or []
 
 # -----------------------------
 # Save mark analysis separately
@@ -614,6 +588,7 @@ def version():
         "service": "trademark_pdf_extractor",
         "version": "1.0"
     }
+
 
 
 
