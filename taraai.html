@@ -365,6 +365,64 @@
 <div class="toast" id="toast"></div>
 
 <script>
+  /* ─── Conflict toggle ─── */
+function toggleAllConflicts(btn) {
+  const extraDiv = document.getElementById('conflictExtraRows');
+  const isOpen   = btn.getAttribute('data-open') === '1';
+
+  if (isOpen) {
+    extraDiv.innerHTML = '';
+    btn.textContent    = `Show all ${JSON.parse(btn.dataset.full).length} more conflicting marks ▼`;
+    btn.setAttribute('data-open', '0');
+    return;
+  }
+
+  const items    = JSON.parse(btn.dataset.full);
+  const applied  = btn.dataset.applied;
+  const riskOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+
+  extraDiv.innerHTML = items.map((item, i) => {
+    const idx      = i + 10;
+    const rCls     = item.risk === 'HIGH'   ? 'risk-high'   :
+                     item.risk === 'MEDIUM' ? 'risk-medium' : 'risk-low';
+    const rIcon    = item.risk === 'HIGH' ? '⚠' : item.risk === 'MEDIUM' ? '◆' : '✓';
+    const scorePct = Math.round((item.score || 0) * 100);
+    const barColor = item.risk === 'HIGH'   ? '#ef4444' :
+                     item.risk === 'MEDIUM' ? '#f59e0b' : '#22c55e';
+
+    return `
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;
+                border-bottom:1px solid var(--fog);${idx % 2 === 1 ? 'background:var(--jade-50);' : ''}">
+      <div style="width:24px;height:24px;border-radius:50%;background:var(--fog);
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:10px;font-weight:700;color:var(--stone-600);flex-shrink:0;margin-top:2px;">
+        ${idx + 1}
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+          <strong style="font-size:13px;color:var(--ink);">${escHtml(item.conflicting_mark || '—')}</strong>
+          <span class="risk-badge ${rCls}" style="font-size:10px;padding:2px 7px;">${rIcon} ${escHtml(item.risk || '—')}</span>
+          <code style="font-size:10.5px;margin-left:auto;font-weight:500;">Serial number - ${escHtml(String(item.serial || '—'))}</code>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+          <span style="font-size:10px;color:var(--stone-400);width:58px;flex-shrink:0;">Similarity</span>
+          <div style="flex:1;max-width:140px;height:5px;background:var(--fog);border-radius:3px;overflow:hidden;">
+            <div style="width:${scorePct}%;height:100%;background:${barColor};border-radius:3px;"></div>
+          </div>
+          <span style="font-size:11px;font-weight:600;color:var(--stone-600);">${scorePct}%</span>
+        </div>
+        <p style="font-size:12px;color:var(--stone-400);margin:0;line-height:1.5;">
+          ${escHtml(item.explanation || '')}
+        </p>
+      </div>
+    </div>`;
+  }).join('');
+
+  btn.textContent = 'Show less ▲';
+  btn.setAttribute('data-open', '1');
+}
+
+
 /* ─── State ─── */
 let sessions    = JSON.parse(localStorage.getItem('jade_sessions') || '[]');
 let currentId   = null;
@@ -810,7 +868,7 @@ if (data.mark_analysis && Array.isArray(data.mark_analysis) && data.mark_analysi
       </div>
 
       <!-- Conflict rows -->
-      ${sorted.map((item, idx) => {
+      ${sorted.slice(0, 10).map((item, idx) => {
         const rCls  = item.risk === 'HIGH'   ? 'risk-high'   :
                       item.risk === 'MEDIUM' ? 'risk-medium' : 'risk-low';
         const rIcon = item.risk === 'HIGH' ? '⚠' : item.risk === 'MEDIUM' ? '◆' : '✓';
@@ -836,7 +894,8 @@ if (data.mark_analysis && Array.isArray(data.mark_analysis) && data.mark_analysi
               <span class="risk-badge ${rCls}" style="font-size:10px;padding:2px 7px;">
                 ${rIcon} ${escHtml(item.risk || '—')}
               </span>
-              <code style="font-size:10.5px;margin-left:auto;">#${escHtml(String(item.serial || '—'))}</code>
+              <code style="font-size:10.5px;margin-left:auto;font-weight:500;">Serial number - ${escHtml(String(item.serial || '—'))}</code>
+              // <code style="font-size:10.5px;margin-left:auto;">#${}</code>
             </div>
 
             <!-- Similarity score bar -->
@@ -855,7 +914,22 @@ if (data.mark_analysis && Array.isArray(data.mark_analysis) && data.mark_analysi
           </div>
         </div>`;
       }).join('')}
-
+      ${ sorted.length > 10 ? `
+      <!-- Show All toggle -->
+      <div id="conflictToggleWrap" style="padding:10px 14px;border-top:1px solid var(--fog);">
+        <button
+          id="conflictToggleBtn"
+          onclick="toggleAllConflicts(this)"
+          data-full='${escHtml(JSON.stringify(sorted.slice(10)))}'
+          data-applied='${escHtml(sorted[0]?.applied_mark || "")}'
+          style="width:100%;padding:8px;background:var(--jade-50);border:1px solid var(--jade-200);
+                 border-radius:var(--radius-sm);font-size:13px;font-weight:500;
+                 color:var(--jade-700);cursor:pointer;">
+          Show all ${sorted.length - 10} more conflicting marks ▼
+        </button>
+        <div id="conflictExtraRows"></div>
+      </div>` : ''}
+      
     </div>
   </div>`;
 }
