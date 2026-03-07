@@ -932,6 +932,222 @@ if (data.mark_analysis && Array.isArray(data.mark_analysis) && data.mark_analysi
     </div>
   </div>`;
 }
+
+/* ── 8. Trademark Distinctiveness Analysis (explain_trademark_result logic) ── */
+if (data.trademark_analysis && data.trademark_analysis.descriptive_score != null) {
+  const ta = data.trademark_analysis;
+
+  /* ── mirror of Python helpers ── */
+  function pct(x) {
+    if (x == null || isNaN(x)) return 'N/A';
+    return Math.round(parseFloat(x) * 100) + '%';
+  }
+
+  function riskLevel(score, thresholds = [0.6, 0.3]) {
+    if (score == null) return { label: 'Unknown', color: 'gray', css: '' };
+    if (score >= thresholds[0]) return { label: 'High',     color: '#b91c1c', css: 'risk-high'   };
+    if (score >= thresholds[1]) return { label: 'Moderate', color: '#b45309', css: 'risk-medium' };
+    return                             { label: 'Low',      color: '#166534', css: 'risk-low'    };
+  }
+
+  /* ── extract fields (mirrors Python's safe extraction) ── */
+  const ds             = ta.descriptive_score  ?? null;
+  const gs             = ta.generic_score      ?? null;
+  const reasons        = Array.isArray(ta.reasons) ? ta.reasons : [];
+  const explanation    = ta.explanation        || '';
+  const details        = ta.details            || {};
+  const ling           = details.linguistic    || {};
+  const dictRatio      = ling.dictionary_word_ratio ?? null;
+  const ngrams         = ling.ngrams           || [];
+  const embTerm        = details.embedding_term  ?? null;
+  const embGoods       = details.embedding_goods ?? null;
+  const crossEnc       = details.cross_encoder   ?? null;
+  const pos            = ling.pos              || {};
+
+  /* ── composite confidence (mirrors Python) ── */
+  let composite = ds;
+  if (composite == null && crossEnc != null)       composite = crossEnc;
+  else if (ds != null && crossEnc != null)          composite = (ds + crossEnc) / 2.0;
+
+  /* ── risk labels ── */
+  const descRisk = riskLevel(ds,  [0.6, 0.3]);
+  const genRisk  = riskLevel(gs,  [0.5, 0.2]);   // lower thresholds — mirrors Python
+
+  /* ── summary line ── */
+  const summaryParts = [];
+  if (ds != null) summaryParts.push(`Descriptiveness: ${descRisk.label} (${pct(ds)})`);
+  if (gs != null) summaryParts.push(`Genericness: ${genRisk.label} (${pct(gs)})`);
+  const summaryLine = summaryParts.length ? summaryParts.join(' | ') : 'No scores available.';
+
+  /* ── key factors (mirrors Python lines) ── */
+  const factors = [];
+  if (dictRatio != null) {
+    if (dictRatio > 0.8)      factors.push('The mark consists mainly of common dictionary words – this raises descriptiveness risk.');
+    else if (dictRatio > 0.4) factors.push('Some words are common dictionary terms – moderate risk.');
+    else                      factors.push('The mark uses uncommon or invented words – lowers risk.');
+  }
+  if (embTerm != null) {
+    if (embTerm > 0.7)        factors.push('The mark is very similar in meaning to known descriptive terms for this class – strong signal.');
+    else if (embTerm > 0.4)   factors.push('The mark shares some meaning with typical descriptive words.');
+  }
+  if (embGoods != null && embGoods > 0.7)
+    factors.push('The mark closely matches the meaning of the goods description – suggests descriptiveness.');
+  if (crossEnc != null && crossEnc > 0.6)
+    factors.push('Deep analysis shows high contextual overlap between mark and goods.');
+
+  /* ── recommendations (mirrors Python) ── */
+  const recs = [];
+  if (descRisk.label === 'High' || (composite != null && composite > 0.6)) {
+    recs.push('Avoid using common dictionary words that describe your product.');
+    recs.push('Consider a coined/fanciful term (e.g., invented word) or an arbitrary word unrelated to the goods.');
+    recs.push('If you must use a descriptive term, add a distinctive element (e.g., unusual spelling, prefix).');
+  } else if (descRisk.label === 'Moderate') {
+    recs.push('The mark has some descriptive elements – try modifying it (e.g., change spelling, combine with arbitrary word).');
+  } else {
+    recs.push('Current wording shows low descriptiveness risk – still avoid directly naming the product/service.');
+  }
+  if (genRisk.label === 'High' || genRisk.label === 'Moderate')
+    recs.push('Genericness risk is notable – avoid using the common name of the product as the mark.');
+
+  /* ── overall badge (reuse composite) ── */
+  const overallRisk = (composite != null && composite > 0.6) ? { label:'High Risk',      css:'risk-high',   icon:'⚠' }
+                    : (composite != null && composite > 0.3) ? { label:'Moderate Risk',  css:'risk-medium', icon:'◆' }
+                    :                                          { label:'Low Risk',        css:'risk-low',    icon:'✓' };
+
+  html += `
+  <div class="extract-card" style="margin-top:8px;">
+    <div class="extract-card-header" style="justify-content:space-between;">
+      <span class="extract-card-title">🔍 Trademark Distinctiveness Analysis</span>
+      <span class="risk-badge ${overallRisk.css}">${overallRisk.icon} ${overallRisk.label}</span>
+    </div>
+    <div class="extract-card-body">
+
+      <!-- Summary line (mirrors Python summary) -->
+      <div style="background:var(--mist);border:1px solid var(--fog);border-radius:var(--radius-sm);
+                  padding:9px 13px;margin-bottom:14px;">
+        <p style="font-size:13px;font-weight:600;color:var(--ink);margin:0;">${escHtml(summaryLine)}</p>
+      </div>
+
+      <!-- Score table (mirrors Python HTML table) -->
+      <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:14px;
+                    border-radius:var(--radius-sm);overflow:hidden;">
+        <thead>
+          <tr>
+            <th style="text-align:left;">Risk</th>
+            <th style="text-align:left;">Level</th>
+            <th style="text-align:left;">Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="background:var(--jade-50);">
+            <td>Descriptiveness</td>
+            <td><span class="risk-badge ${descRisk.css}" style="font-size:11px;padding:2px 7px;">
+              ${escHtml(descRisk.label)}</span></td>
+            <td style="font-weight:700;">${pct(ds)}</td>
+          </tr>
+          <tr>
+            <td>Genericness</td>
+            <td><span class="risk-badge ${genRisk.css}" style="font-size:11px;padding:2px 7px;">
+              ${escHtml(genRisk.label)}</span></td>
+            <td style="font-weight:700;">${pct(gs)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- What this means (mirrors Python "What the scores mean") -->
+      <div style="margin-bottom:12px;">
+        <p style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+                  color:var(--stone-400);margin-bottom:6px;">What These Scores Mean</p>
+        <p style="font-size:12.5px;color:var(--stone-600);line-height:1.65;margin:0;">
+          <strong>Descriptiveness</strong> – How likely the mark is seen as merely describing the goods 
+          (e.g., 'CREAMY' for yogurt).<br>
+          <strong>Genericness</strong> – How likely the mark is the common name for the goods 
+          (e.g., 'COMPUTER' for computers).
+        </p>
+      </div>
+
+      <!-- Key factors (mirrors Python "Key factors considered") -->
+      ${factors.length ? `
+      <div style="margin-bottom:12px;">
+        <p style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+                  color:var(--stone-400);margin-bottom:6px;">Key Factors Considered</p>
+        ${factors.map(f => `
+          <div style="display:flex;align-items:flex-start;gap:7px;padding:3px 0;">
+            <span style="color:var(--jade-500);flex-shrink:0;margin-top:2px;font-weight:700;">•</span>
+            <span style="font-size:12.5px;color:var(--stone-600);">${escHtml(f)}</span>
+          </div>`).join('')}
+      </div>` : ''}
+
+      <!-- Why flagged — reasons (mirrors Python "Why the system flagged risk") -->
+      ${reasons.length ? `
+      <div style="margin-bottom:12px;">
+        <p style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+                  color:var(--stone-400);margin-bottom:6px;">Why Flagged</p>
+        ${reasons.map(r => `
+          <div style="display:flex;align-items:flex-start;gap:7px;padding:3px 0;">
+            <span style="color:#b91c1c;flex-shrink:0;margin-top:2px;font-weight:700;">•</span>
+            <span style="font-size:12.5px;color:var(--stone-600);">${escHtml(r)}</span>
+          </div>`).join('')}
+      </div>` : ''}
+
+      <!-- Recommendations (mirrors Python "Recommendations") -->
+      ${recs.length ? `
+      <div style="background:var(--jade-50);border:1px solid var(--jade-100);
+                  border-radius:var(--radius-sm);padding:10px 13px;margin-bottom:12px;">
+        <p style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+                  color:var(--jade-700);margin-bottom:7px;">Recommendations</p>
+        ${recs.map(r => `
+          <div style="display:flex;align-items:flex-start;gap:7px;padding:3px 0;">
+            <span style="color:var(--jade-600);flex-shrink:0;margin-top:2px;font-weight:700;">›</span>
+            <span style="font-size:12.5px;color:var(--jade-800);">${escHtml(r)}</span>
+          </div>`).join('')}
+      </div>` : ''}
+
+      <!-- Semantic scores (embedding + cross-encoder) -->
+      ${(embTerm != null || embGoods != null || crossEnc != null) ? `
+      <div style="border-top:1px solid var(--fog);padding-top:10px;">
+        <p style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+                  color:var(--stone-400);margin-bottom:8px;">Semantic Similarity Scores</p>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+          ${embTerm  != null ? `<div style="text-align:center;">
+            <div style="font-size:18px;font-weight:700;color:var(--jade-700);">${pct(embTerm)}</div>
+            <div style="font-size:10px;color:var(--stone-400);text-transform:uppercase;letter-spacing:.05em;">Mark↔Term</div>
+          </div>` : ''}
+          ${embGoods != null ? `<div style="text-align:center;">
+            <div style="font-size:18px;font-weight:700;color:var(--jade-700);">${pct(embGoods)}</div>
+            <div style="font-size:10px;color:var(--stone-400);text-transform:uppercase;letter-spacing:.05em;">Mark↔Goods</div>
+          </div>` : ''}
+          ${crossEnc != null ? `<div style="text-align:center;">
+            <div style="font-size:18px;font-weight:700;color:var(--jade-700);">${pct(crossEnc)}</div>
+            <div style="font-size:10px;color:var(--stone-400);text-transform:uppercase;letter-spacing:.05em;">Cross-Encoder</div>
+          </div>` : ''}
+        </div>
+      </div>` : ''}
+
+      <!-- Linguistic POS breakdown -->
+      ${Object.keys(pos).length ? `
+      <div style="border-top:1px solid var(--fog);padding-top:10px;margin-top:10px;">
+        <p style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+                  color:var(--stone-400);margin-bottom:6px;">Linguistic Breakdown</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          ${Object.entries(pos).map(([k,v]) => `
+          <div style="background:var(--jade-50);border:1px solid var(--jade-100);
+                      border-radius:var(--radius-sm);padding:4px 10px;text-align:center;">
+            <div style="font-size:15px;font-weight:700;color:var(--jade-700);">${v}</div>
+            <div style="font-size:10px;color:var(--stone-400);">${escHtml(k.replace(/_/g,' '))}</div>
+          </div>`).join('')}
+          ${dictRatio != null ? `
+          <div style="background:var(--jade-50);border:1px solid var(--jade-100);
+                      border-radius:var(--radius-sm);padding:4px 10px;text-align:center;">
+            <div style="font-size:15px;font-weight:700;color:var(--jade-700);">${pct(dictRatio)}</div>
+            <div style="font-size:10px;color:var(--stone-400);">dict word ratio</div>
+          </div>` : ''}
+        </div>
+      </div>` : ''}
+
+    </div>
+  </div>`;
+}
   /* ── 7. Footer ── */
   if (data.stored_json_path) {
     html += `<p style="font-size:11px;color:var(--stone-400);margin-top:10px;">Full JSON saved → <code>${escHtml(data.stored_json_path)}</code></p>`;
