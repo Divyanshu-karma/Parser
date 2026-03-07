@@ -10,13 +10,14 @@ import json
 import tempfile
 from datetime import date
 from dateutil import parser as dateparser
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi import BackgroundTasks
 import requests
 import pdfplumber
 import fitz
+import functools
 
 TM_OUTPUT_DIR = os.getenv("TM_OUTPUT_DIR", "TM")
 os.makedirs(TM_OUTPUT_DIR, exist_ok=True)
@@ -383,16 +384,51 @@ def forward_mark_text_to_server(mark_text: str) -> list:
 
 async def call_classification_backend(payload: dict) -> dict:
     """Async wrapper for forward_json_to_server."""
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, forward_json_to_server, payload)
 
 
 async def call_mark_backend(mark_text: str) -> list:
     """Async wrapper for forward_mark_text_to_server."""
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, forward_mark_text_to_server, mark_text)
 
+def analyze_trademark(
+    mark: str,
+    goods: str,
+    goods_class: Optional[str] = None,
+    backend_url: str = "https://divya-nshu99-disk.hf.space/analyze"
+) -> Dict[str, Any]:
+    payload = {
+        "mark": mark,
+        "goods": goods,
+        "goods_class": goods_class
+    }
+    timeout = 60
+    try:
+        response = requests.post(backend_url, json=payload, timeout=timeout)
+        response.raise_for_status()
+        data = response.json()
+        expected_keys = {"descriptive_score", "generic_score", "reasons", "explanation", "details"}
+        if not expected_keys.issubset(data.keys()):
+            raise ValueError("Unexpected response format from backend")
+        return data
+    except requests.exceptions.Timeout:
+        raise TimeoutError("Backend request timed out. The model may still be loading.")
+    except requests.exceptions.RequestException as e:
+        error_detail = ""
+        if e.response is not None:
+            try:
+                error_detail = e.response.json().get("detail", e.response.text)
+            except:
+                error_detail = e.response.text
+        raise requests.RequestException(f"Backend request failed: {e}. Detail: {error_detail}")
 
+async def call_analyze_backend(mark: str, goods: str, goods_class: Optional[str]) -> dict:
+    """Async wrapper for analyze_trademark."""
+    loop = asyncio.get_running_loop()
+    fn = functools.partial(analyze_trademark, mark=mark, goods=goods, goods_class=goods_class)
+    return await loop.run_in_executor(None, fn)
 # ─────────────────────────────────────────────────────────────────────────────
 # /extract endpoint
 # ─────────────────────────────────────────────────────────────────────────────
@@ -413,73 +449,82 @@ async def extract_pdf(
 
     try:
         # ── Step 1: Extract fields from PDF ──────────────────────────────────
-        result     = processor.process_pdf(tmp_path)
-        mark_text  = result.get("mark_text", "")
-        classes    = result.get("classes", [])
+        result       = processor.process_pdf(tmp_path)
+        mark_text    = result.get("mark_text", "")
+        classes      = result.get("classes", [])
         class_number = classes[0] if classes else None
 
         print(f"EXTRACTED MARK: '{mark_text}'")
 
         # ── Step 2: Build payloads ────────────────────────────────────────────
+        identification_clean = result.get("identification_text", "").replace("\n", " ")
+
         classification_payload = {
-            "class_number":  class_number,
-            "identification": result.get("identification_text", "").replace("\n", " ")
+            "class_number":   class_number,
+            "identification": identification_clean
         }
 
-        # ── Step 3: Fire BOTH backend calls at the same time ─────────────────
-        #
-        #   Both asyncio.create_task() calls are made BEFORE any await.
-        #   This means both HTTP requests start simultaneously.
-        #
-        #   We then await them IN ORDER:
-        #     - classification first  → goes into result["classification_result"]
-        #     - mark conflict second  → goes into result["mark_analysis"]
-        #
-        #   The frontend's buildExtractionHtml() renders them in the same order:
-        #     Section 4 = classification_result   (shown first in chatbox)
-        #     Section 7 = mark_analysis           (shown second in chatbox)
-
+        # ── Step 3: Fire ALL THREE backend calls at the same time ────────────
         classification_task = asyncio.create_task(
             call_classification_backend(classification_payload)
         )
 
-        # Only start mark conflict task if mark_text was actually extracted
-        if mark_text.strip():
-            mark_task = asyncio.create_task(call_mark_backend(mark_text))
+        has_mark = bool(mark_text.strip())
+
+        if has_mark:
+            goods_class_str = str(class_number).zfill(3) if class_number is not None else None
+            mark_task    = asyncio.create_task(call_mark_backend(mark_text))
+            analyze_task = asyncio.create_task(
+                call_analyze_backend(
+                    mark        = mark_text,
+                    goods       = identification_clean,
+                    goods_class = goods_class_str
+                )
+            )
         else:
-            mark_task = None
+            mark_task    = None
+            analyze_task = None
 
-        # ── Step 4: Collect results in display order ──────────────────────────
+        # ── Step 4: Collect results IN SEQUENCE (1st → 2nd → 3rd) ───────────
 
-        # Wait for classification → attach to result (displayed first)
+        # 1st: classification result
         classification = await classification_task
         result["classification_result"] = classification
 
-        # Wait for mark conflict → attach to result (displayed second)
+        # 2nd: mark conflict result
         if mark_task is not None:
             mark_response = await mark_task
-            # Ensure it's always a list even if something unexpected happened
             if not isinstance(mark_response, list):
                 mark_response = []
         else:
             mark_response = []
             print("MARK TEXT empty — skipping conflict analysis")
-
         result["mark_analysis"] = mark_response
 
-        # ── Step 5: Save mark analysis to its own file ────────────────────────
-        serial = result.get("serial_number", f"tm_{int(time.time())}")
-        mark_filename   = f"{serial}_mark_analysis.json"
-        mark_output_path = os.path.join(TM_OUTPUT_DIR, mark_filename)
+        # 3rd: trademark analysis result
+        if analyze_task is not None:
+            try:
+                result["trademark_analysis"] = await analyze_task
+            except Exception as e:
+                result["trademark_analysis"] = {"status": "failed", "error": str(e)}
+        else:
+            result["trademark_analysis"] = {}
 
+        # ── Compute serial ONCE — reused by all three file saves ─────────────
+        serial = result.get("serial_number", f"tm_{int(time.time())}")
+
+        # ── Save trademark_analysis to its own file ───────────────────────────
+        tm_analysis_path = os.path.join(TM_OUTPUT_DIR, f"{serial}_trademark_analysis.json")
+        with open(tm_analysis_path, "w", encoding="utf-8") as f:
+            json.dump(result.get("trademark_analysis", {}), f, indent=2, ensure_ascii=False)
+
+        # ── Step 5: Save mark analysis to its own file ────────────────────────
+        mark_output_path = os.path.join(TM_OUTPUT_DIR, f"{serial}_mark_analysis.json")
         with open(mark_output_path, "w", encoding="utf-8") as f:
             json.dump(mark_response, f, indent=2, ensure_ascii=False)
 
         # ── Step 6: Save full result JSON ─────────────────────────────────────
-        serial   = result.get("serial_number")
-        filename = f"{serial}.json" if serial else f"tm_result_{int(time.time())}.json"
-        output_path = os.path.join(TM_OUTPUT_DIR, filename)
-
+        output_path = os.path.join(TM_OUTPUT_DIR, f"{serial}.json")
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(result, f, indent=2, ensure_ascii=False)
 
@@ -495,8 +540,6 @@ async def extract_pdf(
             pass
 
     return JSONResponse(result)
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Static routes
 # ─────────────────────────────────────────────────────────────────────────────
@@ -514,3 +557,4 @@ def health():
 @app.get("/version")
 def version():
     return {"service": "trademark_pdf_extractor", "version": "1.0"}
+
