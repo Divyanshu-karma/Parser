@@ -607,6 +607,109 @@ function renderMarkdown(md) {
   return html;
 }
 
+function prepareLLMInput(data) {
+
+  const riskLevel =
+    data.confidence >= 0.7 ? "LOW" :
+    data.confidence >= 0.4 ? "MEDIUM" : "HIGH";
+
+  return {
+
+    application_overview: {
+      serial_number: data.serial_number,
+      mark_text: data.mark_text,
+      applicant_name: data.applicant_name,
+      filing_date: data.filing_date,
+      filing_basis: data.filing_basis,
+      classes: data.classes,
+      identification: data.identification_text
+    },
+
+    overall_assessment: {
+      risk_level: riskLevel,
+      confidence_score: data.confidence
+    },
+
+    class_validation: data.classification_result?.details || null,
+
+    conflict_analysis: {
+      total_conflicts: data.mark_analysis?.length || 0,
+      top_conflicts: (data.mark_analysis || []).slice(0,5)
+    },
+
+    distinctiveness: data.trademark_analysis || null,
+
+    validation_issues: [
+      ...(data.errors || []),
+      ...(data.warnings || [])
+    ]
+  };
+}  
+  
+async function generateLLMSummaryStreaming(llmJson) {
+
+  try {
+
+    const response = await fetch(
+      "https://shivam-99x-taraai.hf.space/llm-summary",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          report: llmJson
+        })
+      }
+    );
+
+    const result = await response.json();
+    const summaryText = result.summary;
+
+    streamSummaryToChat(summaryText);
+
+  } catch (err) {
+    console.error("LLM summary error:", err);
+  }
+}
+function streamSummaryToChat(text) {
+
+  const s = getSession();
+
+  const aiMsg = {
+    id: uid(),
+    role: "ai",
+    text: "",
+    ts: Date.now()
+  };
+
+  s.messages.push(aiMsg);
+  appendMsg(aiMsg);
+  const llmInput = prepareLLMInput(data);
+  generateLLMSummaryStreaming(llmInput);
+  const msgElement = document.querySelector(
+    `.msg-row[data-id="${aiMsg.id}"] .msg-bubble`
+  );
+
+  let index = 0;
+
+  function typeChar() {
+
+    if (index < text.length) {
+
+      aiMsg.text += text[index];
+      msgElement.innerHTML = renderMarkdown(aiMsg.text);
+
+      index++;
+
+      setTimeout(typeChar, 12); // typing speed
+
+    }
+
+  }
+
+  typeChar();
+}
 /* ════════════════════════════════════════════════
    BACKEND RESPONSE FORMATTER
    Converts the /extract JSON into rich HTML cards
@@ -1234,7 +1337,6 @@ function sendMessage() {
 
       /* Build rich HTML from backend JSON */
       const richHtml = buildExtractionHtml(data);
-
       /* Plain-text copy fallback */
       const confPct = data.confidence != null ? Math.round(data.confidence*100) : 0;
       const classif = data.classification_result?.details;
