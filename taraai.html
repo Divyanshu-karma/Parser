@@ -934,22 +934,20 @@ if (data.mark_analysis && Array.isArray(data.mark_analysis) && data.mark_analysi
 }
 
 /* ── 8. Trademark Distinctiveness Analysis (explain_trademark_result logic) ── */
+// ✅ FIX — change to const arrow functions inside the block
 if (data.trademark_analysis && data.trademark_analysis.descriptive_score != null) {
-  const ta = data.trademark_analysis;
-
-  /* ── mirror of Python helpers ── */
-  function pct(x) {
+  const pct = (x) => {
     if (x == null || isNaN(x)) return 'N/A';
     return Math.round(parseFloat(x) * 100) + '%';
-  }
+  };
 
-  function riskLevel(score, thresholds = [0.6, 0.3]) {
+  const riskLevel = (score, thresholds = [0.6, 0.3]) => {
     if (score == null) return { label: 'Unknown', color: 'gray', css: '' };
     if (score >= thresholds[0]) return { label: 'High',     color: '#b91c1c', css: 'risk-high'   };
     if (score >= thresholds[1]) return { label: 'Moderate', color: '#b45309', css: 'risk-medium' };
     return                             { label: 'Low',      color: '#166534', css: 'risk-low'    };
-  }
-
+  };
+  const ta = data.trademark_analysis;
   /* ── extract fields (mirrors Python's safe extraction) ── */
   const ds             = ta.descriptive_score  ?? null;
   const gs             = ta.generic_score      ?? null;
@@ -958,7 +956,6 @@ if (data.trademark_analysis && data.trademark_analysis.descriptive_score != null
   const details        = ta.details            || {};
   const ling           = details.linguistic    || {};
   const dictRatio      = ling.dictionary_word_ratio ?? null;
-  const ngrams         = ling.ngrams           || [];
   const embTerm        = details.embedding_term  ?? null;
   const embGoods       = details.embedding_goods ?? null;
   const crossEnc       = details.cross_encoder   ?? null;
@@ -1251,6 +1248,9 @@ function sendMessage() {
         data.identification_text ? `Goods/Services: ${data.identification_text.slice(0,200)}` : '',
         data.mark_analysis?.length && !data.mark_analysis[0].error
           ? `Conflicting Marks: ${data.mark_analysis.map(m => m.conflicting_mark).join(', ')}`
+          : '',
+        data.trademark_analysis?.descriptive_score != null
+          ? `Distinctiveness: Descriptive ${Math.round(data.trademark_analysis.descriptive_score*100)}% | Generic ${Math.round(data.trademark_analysis.generic_score*100)}%`
           : '',
       ].filter(Boolean).join('\n');
 
