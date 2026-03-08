@@ -764,7 +764,7 @@ function streamSummaryToChat(aiMsg, msgElement, text) {
       msgElement.innerHTML = renderMarkdown(aiMsg.text);
       scrollBottom();
       index++;
-      setTimeout(typeChar, 2);
+      setTimeout(typeChar, 0);
     } else {
       // Save final text once streaming is complete
       save();
