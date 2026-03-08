@@ -722,6 +722,49 @@ async function generateLLMSummaryStreaming(llmJson) {
   }
 }
 
+async function sendToTaraAI(llmJson) {
+
+  try {
+
+    const response = await fetch(
+      "https://shivam-99x-taraai.hf.space/tara-analysis",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          report_json: llmJson
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Server error ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    displayTaraAgentResults(result.tara_analysis);
+
+  } catch (err) {
+
+    console.error("TARA AI error:", err);
+
+    const s = getSession();
+
+    const aiMsg = {
+      id: uid(),
+      role: "ai",
+      text: `⚠ TARA analysis failed: ${err.message}`,
+      ts: Date.now()
+    };
+
+    s.messages.push(aiMsg);
+    appendMsg(aiMsg);
+    save();
+  }
+}
 
 function streamSummaryToChat(aiMsg, msgElement, text) {
   const s = getSession();
@@ -1399,7 +1442,8 @@ function sendMessage() {
       updateSendBtn();
       document.getElementById('sessionLabel').textContent = 'Ready';
       const llmInput = prepareLLMInput(data);
-      generateLLMSummaryStreaming(llmInput); 
+      generateLLMSummaryStreaming(llmInput);
+      sendToTaraAI(llmInput); // NEW AI pipeline
     })
     .catch(err => {
       hideTyping();
