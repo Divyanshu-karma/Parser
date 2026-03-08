@@ -727,42 +727,30 @@ async function sendToTaraAI(llmJson) {
   try {
 
     const response = await fetch(
-      "https://shivam-99x-taraai.hf.space/tara-analysis",
+      "https://shivam-99x-taraagents.hf.space/run/analyze_trademark",
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          report_json: llmJson
+          data: [
+            JSON.stringify(llmJson)
+          ]
         })
       }
     );
 
-    if (!response.ok) {
-      throw new Error(`Server error ${response.status}`);
-    }
-
     const result = await response.json();
 
-    displayTaraAgentResults(result.tara_analysis);
+    const taraOutput = JSON.parse(result.data[0]);
+
+    displayTaraAgentResults(taraOutput.tara_analysis);
 
   } catch (err) {
 
-    console.error("TARA AI error:", err);
+    console.error("TARA API will back soon...:", err);
 
-    const s = getSession();
-
-    const aiMsg = {
-      id: uid(),
-      role: "ai",
-      text: `⚠ TARA analysis failed: ${err.message}`,
-      ts: Date.now()
-    };
-
-    s.messages.push(aiMsg);
-    appendMsg(aiMsg);
-    save();
   }
 }
 
