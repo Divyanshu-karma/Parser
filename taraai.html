@@ -724,6 +724,9 @@ async function generateLLMSummaryStreaming(llmJson) {
 
 async function sendToTaraAI(llmJson) {
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
   try {
 
     const response = await fetch(
@@ -734,22 +737,26 @@ async function sendToTaraAI(llmJson) {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          data: [
-            JSON.stringify(llmJson)
-          ]
-        })
+          data: [llmJson]
+        }),
+        signal: controller.signal
       }
     );
 
-    const result = await response.json();
+    clearTimeout(timeout);
 
-    const taraOutput = JSON.parse(result.data[0]);
+    const result = await response.json();
+    const taraOutput = result.data[0];
 
     displayTaraAgentResults(taraOutput.tara_analysis);
 
   } catch (err) {
 
-    console.error("TARA API will back soon...:", err);
+    if (err.name === "AbortError") {
+      console.error("TARA API timeout");
+    } else {
+      console.error("TARA API error:", err);
+    }
 
   }
 }
