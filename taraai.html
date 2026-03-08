@@ -608,34 +608,76 @@ function renderMarkdown(md) {
 }
 
 function prepareLLMInput(data) {
+
   const riskLevel =
     data.confidence >= 0.7 ? "LOW" :
     data.confidence >= 0.4 ? "MEDIUM" : "HIGH";
 
+  const conflicts = data.mark_analysis || [];
+
+  const highRiskConflicts =
+    conflicts.filter(c => c.risk === "HIGH").length;
+
   return {
+
     application_overview: {
-      serial_number:  data.serial_number,
-      mark_text:      data.mark_text,
+      serial_number: data.serial_number,
+      mark_text: data.mark_text,
       applicant_name: data.applicant_name,
-      filing_date:    data.filing_date,
-      filing_basis:   data.filing_basis,
-      classes:        data.classes,
+      filing_date: data.filing_date,
+      filing_basis: data.filing_basis,
+      classes: data.classes,
       identification: data.identification_text
     },
+
     overall_assessment: {
-      risk_level:       riskLevel,
+      risk_level: riskLevel,
       confidence_score: data.confidence
     },
-    class_validation:    data.classification_result?.details || null,
+
+    classification_analysis: data.classification_result?.details
+      ? {
+          claimed_class: data.classification_result.details.claimedClass,
+          suggested_class: data.classification_result.details.suggestedClass,
+          status: data.classification_result.details.claimedClassStatus,
+          confidence: data.classification_result.details.confidenceLevel
+        }
+      : null,
+
     conflict_analysis: {
-      total_conflicts: data.mark_analysis?.length || 0,
-      top_conflicts:   (data.mark_analysis || []).slice(0, 5)
+      total_conflicts: conflicts.length,
+      high_risk_conflicts: highRiskConflicts,
+      sample_conflicts: conflicts.slice(0,5).map(c => ({
+        conflicting_mark: c.conflicting_mark,
+        serial: c.serial,
+        risk: c.risk,
+        similarity_score: c.score
+      }))
     },
-    distinctiveness:     data.trademark_analysis || null,
+
+    distinctiveness_analysis: data.trademark_analysis
+      ? {
+          descriptive_score: data.trademark_analysis.descriptive_score,
+          generic_score: data.trademark_analysis.generic_score,
+          semantic_similarity: {
+            embedding_term: data.trademark_analysis.details?.embedding_term,
+            embedding_goods: data.trademark_analysis.details?.embedding_goods,
+            cross_encoder: data.trademark_analysis.details?.cross_encoder
+          }
+        }
+      : null,
+
     validation_issues: [
-      ...(data.errors   || []),
-      ...(data.warnings || [])
+      ...(data.errors || []).map(e => ({
+        issue: e,
+        severity: "HIGH"
+      })),
+      ...(data.warnings || []).map(w => ({
+        issue: w,
+        severity: "MEDIUM"
+      }))
     ]
+
   };
 }  
   
