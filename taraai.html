@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Jade — Trademark Risk Analysis</title>
+<title>TARA — Trademark Risk Analysis</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
@@ -248,7 +248,7 @@
           </svg>
         </div>
         <div>
-          <div class="brand-name">Jade AI</div>
+          <div class="brand-name">TARA AI</div>
           <div class="brand-sub">Trademark Risk Analysis</div>
         </div>
       </div>
@@ -259,13 +259,13 @@
         New Analysis
       </button>
     </div>
-    <div class="sidebar-section-label">Jade History</div>
+    <div class="sidebar-section-label">TARA History</div>
     <div class="chat-history" id="chatHistory"></div>
     <div class="sidebar-footer">
       <div class="user-info">
         <div class="user-avatar">J</div>
         <div class="user-details">
-          <div class="user-name">Jade Workspace</div>
+          <div class="user-name">TARA Workspace</div>
           <div class="user-role">IP Risk Analysis</div>
         </div>
       </div>
@@ -546,7 +546,7 @@ function buildMsgHtml(m) {
   return `<div class="msg-row ${isUser?'user':'ai'}" data-id="${m.id}">
     ${avatarHtml}
     <div class="msg-content">
-      <div class="msg-name">${isUser?'You':'Jade AI'}</div>
+      <div class="msg-name">${isUser?'You':'TARA AI'}</div>
       <div class="msg-bubble">${content}</div>
       ${actions}
     </div>
@@ -734,7 +734,7 @@ function buildExtractionHtml(data) {
   let html = `
   <div style="margin-bottom:4px;">
     <strong style="font-family:var(--font-serif);font-size:16px;color:var(--jade-800);">
-      Trademark Extraction Report
+      Trademark Risk Assessment Report
     </strong>
   </div>
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
@@ -1333,7 +1333,7 @@ function sendMessage() {
       const classif = data.classification_result?.details;
 
       const plainText = [
-        `Trademark Extraction Report`,
+        `Trademark Risk Assessment Report`,
         `Serial: ${data.serial_number||'N/A'} | Confidence: ${confPct}%`,
         `Applicant: ${data.applicant_name||'—'} | Mark: ${data.mark_text||'—'}`,
         `Classes: ${(data.classes||[]).join(', ')||'None'}`,
@@ -1411,7 +1411,7 @@ function clearCurrentChat() {
 function exportConversation() {
   const s = getSession();
   if (!s || !s.messages.length) { toast('Nothing to export'); return; }
-  const txt = s.messages.map(m => `[${m.role==='user'?'You':'Jade AI'}] ${fmtTime(m.ts)}\n${m.text}`).join('\n\n─────────────\n\n');
+  const txt = s.messages.map(m => `[${m.role==='user'?'You':'TARA AI'}] ${fmtTime(m.ts)}\n${m.text}`).join('\n\n─────────────\n\n');
   const blob = new Blob([txt],{type:'text/plain'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download=`jade-analysis-${Date.now()}.txt`;
