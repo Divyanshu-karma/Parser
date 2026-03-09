@@ -728,11 +728,12 @@ async function sendToTaraAI(llmJson) {
 
   try {
     const response = await fetch(
-      "https://shivam-99x-taraagents.hf.space/run/analyze_trademark",
+      "https://shivam-99x-taraagents.hf.space/run/predict",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          fn_index: 0,  
           data: [JSON.stringify(llmJson)]  // ✅ FIX 1: must be a JSON string, not object
         }),
         signal: controller.signal
