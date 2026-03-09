@@ -723,21 +723,17 @@ async function generateLLMSummaryStreaming(llmJson) {
 }
 
 async function sendToTaraAI(llmJson) {
-
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
+  const timeout = setTimeout(() => controller.abort(), 120000); // 120s — HF spaces can be slow
 
   try {
-
     const response = await fetch(
       "https://shivam-99x-taraagents.hf.space/api/predict/analyze_trademark",
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          data: [llmJson]
+          data: [JSON.stringify(llmJson)]  // ✅ FIX 1: must be a JSON string, not object
         }),
         signal: controller.signal
       }
@@ -745,28 +741,31 @@ async function sendToTaraAI(llmJson) {
 
     clearTimeout(timeout);
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
     const result = await response.json();
 
-    if (!result?.data || !result.data.length) {
-      throw new Error("Invalid response format from TARA API");
-    }
+    if (!result?.data?.length) throw new Error("Empty response from TARA API");
 
-    const taraOutput = result.data[0];
+    // ✅ FIX 2: drill into the nested structure
+    const outer      = result.data[0];
+    const taraInner  = outer?.tara_analysis?.tara_analysis ?? outer?.tara_analysis ?? outer;
 
-    displayTaraAgentResults(taraOutput);
+    displayTaraAgentResults(taraInner);
 
   } catch (err) {
-
-    if (err.name === "AbortError") {
-      console.error("TARA API timeout");
-    } else {
-      console.error("TARA API error:", err);
-    }
-
+    const s = getSession();
+    if (!s) return;
+    const aiMsg = {
+      id: uid(), role: "ai",
+      text: err.name === "AbortError"
+        ? "⚠ TARA agent pipeline timed out (>120s). The Hugging Face space may be cold-starting."
+        : `⚠ TARA agent pipeline error: ${err.message}`,
+      ts: Date.now()
+    };
+    s.messages.push(aiMsg);
+    appendMsg(aiMsg);
+    save();
   }
 }
 
@@ -790,17 +789,156 @@ function streamSummaryToChat(aiMsg, msgElement, text) {
   typeChar();
 }
 
-function displayTaraAgentResults(data) {
-
+function displayTaraAgentResults(tara) {
   const s = getSession();
+  if (!s) return;
 
-  const aiMsg = {
-    id: uid(),
-    role: "ai",
-    text: "### 🤖 TARA Multi-Agent Legal Analysis\n\n" + JSON.stringify(data, null, 2),
-    ts: Date.now()
-  };
+  // ── Pull each agent's output safely ──
+  const risks       = tara?.agent1_output?.identified_risks       ?? [];
+  const refusals    = tara?.agent2_output?.predicted_refusals     ?? [];
+  const strategy    = tara?.agent3_output?.strategy_plan          ?? [];
+  const improvements = tara?.agent4_output?.application_improvements ?? [];
 
+  // ── Severity badge helper ──
+  function sevBadge(sev) {
+    const s = String(sev || '').toUpperCase();
+    if (s === 'HIGH')   return `<span class="risk-badge risk-high">⚠ HIGH</span>`;
+    if (s === 'MEDIUM') return `<span class="risk-badge risk-medium">◆ MEDIUM</span>`;
+    return                     `<span class="risk-badge risk-low">✓ LOW</span>`;
+  }
+
+  let html = `
+  <div style="margin-bottom:6px;">
+    <strong style="font-family:var(--font-serif);font-size:16px;color:var(--jade-800);">
+      🤖 TARA Multi-Agent Legal Analysis
+    </strong>
+  </div>`;
+
+  // ── Agent 1: Identified Risks ──
+  if (risks.length) {
+    html += `
+    <div class="extract-card" style="margin-top:8px;">
+      <div class="extract-card-header">
+        <span class="extract-card-title">⚠ Agent 1 — Identified Risks (${risks.length})</span>
+      </div>
+      <div class="extract-card-body" style="padding:0;">
+        ${risks.map((r, i) => `
+        <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;
+                    border-bottom:1px solid var(--fog);${i%2===1?'background:var(--jade-50);':''}">
+          <div style="min-width:0;flex:1;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+              <strong style="font-size:13px;color:var(--ink);">
+                ${escHtml(String(r.risk_type || '').replace(/_/g,' ').toUpperCase())}
+              </strong>
+              ${sevBadge(r.severity)}
+            </div>
+            <p style="font-size:12px;color:var(--stone-400);margin:0;">${escHtml(r.evidence || '')}</p>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // ── Agent 2: Predicted Refusals ──
+  if (refusals.length) {
+    html += `
+    <div class="extract-card" style="margin-top:8px;">
+      <div class="extract-card-header">
+        <span class="extract-card-title">📋 Agent 2 — Predicted Refusals (${refusals.length})</span>
+      </div>
+      <div class="extract-card-body" style="padding:0;">
+        ${refusals.map((r, i) => `
+        <div style="padding:10px 14px;border-bottom:1px solid var(--fog);
+                    ${i%2===1?'background:var(--jade-50);':''}">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+            <strong style="font-size:13px;color:var(--ink);">${escHtml(r.refusal_type || r.type || JSON.stringify(r).slice(0,60))}</strong>
+            ${r.likelihood ? sevBadge(r.likelihood) : ''}
+          </div>
+          ${r.explanation ? `<p style="font-size:12px;color:var(--stone-400);margin:0;">${escHtml(r.explanation)}</p>` : ''}
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // ── Agent 3: Strategy Plan ──
+  if (strategy.length) {
+    html += `
+    <div class="extract-card" style="margin-top:8px;">
+      <div class="extract-card-header">
+        <span class="extract-card-title">🧭 Agent 3 — Strategy Plan</span>
+      </div>
+      <div class="extract-card-body">
+        ${strategy.map(step => `
+        <div style="display:flex;align-items:flex-start;gap:7px;padding:4px 0;">
+          <span style="color:var(--jade-600);font-weight:700;flex-shrink:0;">›</span>
+          <span style="font-size:12.5px;color:var(--stone-600);">${escHtml(typeof step === 'string' ? step : JSON.stringify(step))}</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // ── Agent 4: Application Improvements ──
+  if (improvements.length) {
+    html += `
+    <div class="extract-card" style="margin-top:8px;">
+      <div class="extract-card-header">
+        <span class="extract-card-title">🛠 Agent 4 — Recommended Fixes (${improvements.length})</span>
+      </div>
+      <div class="extract-card-body" style="padding:0;">
+        ${improvements.map((imp, i) => {
+          const fixes = imp.recommended_fixes || {};
+          const sections = [
+            { label: 'Alternative Mark Names',       key: 'mark_suggestions',             icon: '🏷' },
+            { label: 'Goods & Services Improvements', key: 'goods_services_improvements',  icon: '📦' },
+            { label: 'Application Corrections',       key: 'application_corrections',      icon: '✏️' },
+            { label: 'Filing Strategy',               key: 'filing_strategy',              icon: '📋' },
+            { label: 'Documentation',                 key: 'documentation_recommendations',icon: '📄' },
+          ];
+          const sectHtml = sections.map(sec => {
+            const items = (fixes[sec.key] || []).filter(Boolean);
+            if (!items.length) return '';
+            return `
+            <div style="margin-top:8px;">
+              <p style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+                        color:var(--stone-400);margin-bottom:5px;">${sec.icon} ${sec.label}</p>
+              ${items.map(it => `
+              <div style="display:flex;align-items:flex-start;gap:7px;padding:2px 0;">
+                <span style="color:var(--jade-500);font-weight:700;flex-shrink:0;">•</span>
+                <span style="font-size:12.5px;color:var(--jade-800);">${escHtml(String(it))}</span>
+              </div>`).join('')}
+            </div>`;
+          }).join('');
+
+          return `
+          <div style="padding:12px 14px;border-bottom:1px solid var(--fog);
+                      ${i%2===1?'background:var(--jade-50);':''}">
+            <strong style="font-size:13px;color:var(--ink);">
+              ${escHtml(imp.refusal_type || `Issue ${i+1}`)}
+            </strong>
+            ${sectHtml || '<p style="font-size:12px;color:var(--stone-400);margin-top:6px;">No specific fixes provided.</p>'}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  // ── Fallback if all agents empty ──
+  if (!risks.length && !refusals.length && !strategy.length && !improvements.length) {
+    html += `
+    <div class="extract-card" style="margin-top:8px;">
+      <div class="extract-card-body">
+        <p style="font-size:13px;color:var(--stone-400);">
+          TARA agents returned no structured output. Raw response:
+        </p>
+        <pre style="font-size:11px;background:var(--mist);padding:10px;border-radius:6px;
+                    overflow-x:auto;white-space:pre-wrap;word-break:break-all;margin-top:8px;">
+${escHtml(JSON.stringify(tara, null, 2).slice(0, 2000))}
+        </pre>
+      </div>
+    </div>`;
+  }
+
+  const aiMsg = { id: uid(), role: "ai", richHtml: html, text: "[TARA Agent Analysis]", ts: Date.now() };
   s.messages.push(aiMsg);
   appendMsg(aiMsg);
   save();
