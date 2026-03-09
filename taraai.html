@@ -1600,7 +1600,7 @@ function sendMessage() {
       document.getElementById('sessionLabel').textContent = 'Ready';
       const llmInput = prepareLLMInput(data);
       generateLLMSummaryStreaming(llmInput);
-      sendToTaraAI(llmInput); // NEW AI pipeline
+      sendToTaraAI(llmInput); 
     })
     .catch(err => {
       hideTyping();
