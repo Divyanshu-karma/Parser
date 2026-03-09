@@ -786,152 +786,256 @@ function displayTaraAgentResults(tara) {
   const s = getSession();
   if (!s) return;
 
-  // ── Pull each agent's output safely ──
-  const risks       = tara?.agent1_output?.identified_risks       ?? [];
-  const refusals    = tara?.agent2_output?.predicted_refusals     ?? [];
-  const strategy    = tara?.agent3_output?.strategy_plan          ?? [];
+  const risks        = tara?.agent1_output?.identified_risks       ?? [];
+  const refusals     = tara?.agent2_output?.predicted_refusals     ?? [];
+  const strategy     = tara?.agent3_output?.strategy_plan          ?? [];
   const improvements = tara?.agent4_output?.application_improvements ?? [];
 
-  // ── Severity badge helper ──
-  function sevBadge(sev) {
-    const s = String(sev || '').toUpperCase();
-    if (s === 'HIGH')   return `<span class="risk-badge risk-high">⚠ HIGH</span>`;
-    if (s === 'MEDIUM') return `<span class="risk-badge risk-medium">◆ MEDIUM</span>`;
-    return                     `<span class="risk-badge risk-low">✓ LOW</span>`;
-  }
+  const sevColor = (sev) => {
+    const v = String(sev||'').toUpperCase();
+    if (v==='HIGH')   return { css:'risk-high',   icon:'⚠', label:'High'   };
+    if (v==='MEDIUM') return { css:'risk-medium', icon:'◆', label:'Medium' };
+    return                   { css:'risk-low',    icon:'✓', label:'Low'    };
+  };
+
+  const RISK_LABELS = {
+    genericness_risk:      'The mark may be too generic to register',
+    descriptiveness_risk:  'The mark may be too descriptive to register',
+    likelihood_of_confusion:'Conflict with an existing registered mark',
+    validation_issue:      'Missing or incorrect application information',
+  };
+
+  const ISSUE_LABELS = {
+    filing_date_missing:        'Filing date is missing from the application',
+    serial_number_format:       'Serial number is missing or incorrectly formatted',
+    identification_missing:     'Goods & services description is missing',
+    identification_placeholder: 'Goods & services description contains placeholder text',
+    class_number_invalid:       'One or more class numbers are out of the valid range',
+  };
 
   let html = `
-  <div style="margin-bottom:6px;">
-    <strong style="font-family:var(--font-serif);font-size:16px;color:var(--jade-800);">
+  <div style="margin-bottom:10px;">
+    <strong style="font-family:var(--font-serif);font-size:17px;color:var(--jade-800);">
       🤖 TARA Multi-Agent Legal Analysis
     </strong>
+    <p style="font-size:12.5px;color:var(--stone-400);margin-top:4px;">
+      Four AI agents have reviewed your trademark application. Here is what they found.
+    </p>
   </div>`;
 
-  // ── Agent 1: Identified Risks ──
+  /* ══════════════════════════════════════════
+     AGENT 1 — Risk Identification
+  ══════════════════════════════════════════ */
   if (risks.length) {
     html += `
-    <div class="extract-card" style="margin-top:8px;">
+    <div class="extract-card" style="margin-top:10px;">
       <div class="extract-card-header">
-        <span class="extract-card-title">⚠ Agent 1 — Identified Risks (${risks.length})</span>
+        <span class="extract-card-title">⚠ Step 1 — Risks Identified in Your Application</span>
       </div>
-      <div class="extract-card-body" style="padding:0;">
-        ${risks.map((r, i) => `
-        <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;
-                    border-bottom:1px solid var(--fog);${i%2===1?'background:var(--jade-50);':''}">
-          <div style="min-width:0;flex:1;">
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
-              <strong style="font-size:13px;color:var(--ink);">
-                ${escHtml(String(r.risk_type || '').replace(/_/g,' ').toUpperCase())}
-              </strong>
-              ${sevBadge(r.severity)}
-            </div>
-            <p style="font-size:12px;color:var(--stone-400);margin:0;">${escHtml(r.evidence || '')}</p>
+      <div class="extract-card-body" style="padding:0;">`;
+
+    risks.forEach((r, i) => {
+      const sev   = sevColor(r.severity);
+      const label = RISK_LABELS[r.risk_type] || String(r.risk_type||'').replace(/_/g,' ');
+
+      // Parse evidence into human-readable line
+      let evidenceLine = '';
+      if (r.evidence) {
+        const ev = r.evidence;
+        if (ev.includes('generic_score:')) {
+          const score = ev.split('generic_score:')[1].trim();
+          evidenceLine = `The genericness score for your mark is <strong>${Math.round(parseFloat(score)*100)}%</strong> — scores above 30% indicate the mark name may be too common.`;
+        } else if (ev.includes('issue:')) {
+          const issuePart = ev.split('issue:')[1].split(',')[0].trim();
+          evidenceLine = ISSUE_LABELS[issuePart] || issuePart.replace(/_/g,' ');
+        } else {
+          evidenceLine = escHtml(ev);
+        }
+      }
+
+      html += `
+      <div style="display:flex;align-items:flex-start;gap:14px;padding:12px 16px;
+                  border-bottom:1px solid var(--fog);${i%2===1?'background:var(--jade-50);':''}">
+        <div style="width:32px;height:32px;border-radius:50%;flex-shrink:0;margin-top:2px;
+                    display:flex;align-items:center;justify-content:center;font-size:15px;
+                    background:${sev.css==='risk-high'?'#fee2e2':sev.css==='risk-medium'?'#fef3c7':'#dcfce7'};">
+          ${sev.icon}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px;">
+            <strong style="font-size:13.5px;color:var(--ink);">${escHtml(label)}</strong>
+            <span class="risk-badge ${sev.css}" style="font-size:10.5px;">${sev.icon} ${sev.label} Priority</span>
           </div>
-        </div>`).join('')}
-      </div>
-    </div>`;
+          <p style="font-size:12.5px;color:var(--stone-600);margin:0;line-height:1.65;">${evidenceLine}</p>
+        </div>
+      </div>`;
+    });
+
+    html += `</div></div>`;
   }
 
-  // ── Agent 2: Predicted Refusals ──
+  /* ══════════════════════════════════════════
+     AGENT 2 — Predicted Refusals
+  ══════════════════════════════════════════ */
   if (refusals.length) {
     html += `
-    <div class="extract-card" style="margin-top:8px;">
+    <div class="extract-card" style="margin-top:10px;">
       <div class="extract-card-header">
-        <span class="extract-card-title">📋 Agent 2 — Predicted Refusals (${refusals.length})</span>
+        <span class="extract-card-title">📋 Step 2 — Likely USPTO Refusals</span>
       </div>
-      <div class="extract-card-body" style="padding:0;">
-        ${refusals.map((r, i) => `
-        <div style="padding:10px 14px;border-bottom:1px solid var(--fog);
-                    ${i%2===1?'background:var(--jade-50);':''}">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
-            <strong style="font-size:13px;color:var(--ink);">${escHtml(r.refusal_type || r.type || JSON.stringify(r).slice(0,60))}</strong>
-            ${r.likelihood ? sevBadge(r.likelihood) : ''}
-          </div>
-          ${r.explanation ? `<p style="font-size:12px;color:var(--stone-400);margin:0;">${escHtml(r.explanation)}</p>` : ''}
-        </div>`).join('')}
+      <div style="padding:10px 16px 4px;font-size:12.5px;color:var(--stone-600);border-bottom:1px solid var(--fog);">
+        Based on the risks above, the USPTO may issue the following refusals when reviewing your application.
       </div>
-    </div>`;
+      <div class="extract-card-body" style="padding:0;">`;
+
+    refusals.forEach((r, i) => {
+      html += `
+      <div style="padding:14px 16px;border-bottom:1px solid var(--fog);${i%2===1?'background:var(--jade-50);':''}">
+        <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+          <strong style="font-size:13.5px;color:var(--ink);">🚫 ${escHtml(r.refusal_type||'')}</strong>
+        </div>
+
+        <!-- Legal basis row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          ${r.legal_basis ? `
+          <div style="background:var(--mist);border:1px solid var(--fog);border-radius:var(--radius-sm);padding:8px 12px;">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+                        color:var(--stone-400);margin-bottom:3px;">Legal Basis</div>
+            <div style="font-size:12.5px;font-weight:600;color:var(--jade-800);">${escHtml(r.legal_basis)}</div>
+          </div>` : ''}
+          ${r.tmep_section ? `
+          <div style="background:var(--mist);border:1px solid var(--fog);border-radius:var(--radius-sm);padding:8px 12px;">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+                        color:var(--stone-400);margin-bottom:3px;">TMEP Section</div>
+            <div style="font-size:12.5px;font-weight:600;color:var(--jade-800);">${escHtml(r.tmep_section)}</div>
+          </div>` : ''}
+        </div>
+
+        ${r.evidence ? `
+        <div style="font-size:12px;color:var(--stone-500);line-height:1.6;">
+          <span style="font-weight:600;color:var(--stone-600);">Why: </span>${escHtml(r.evidence)}
+        </div>` : ''}
+      </div>`;
+    });
+
+    html += `</div></div>`;
   }
 
-  // ── Agent 3: Strategy Plan ──
+  /* ══════════════════════════════════════════
+     AGENT 3 — Strategy Plan
+  ══════════════════════════════════════════ */
   if (strategy.length) {
     html += `
-    <div class="extract-card" style="margin-top:8px;">
+    <div class="extract-card" style="margin-top:10px;">
       <div class="extract-card-header">
-        <span class="extract-card-title">🧭 Agent 3 — Strategy Plan</span>
+        <span class="extract-card-title">🧭 Step 3 — Recommended Strategy to Overcome Refusals</span>
       </div>
-      <div class="extract-card-body">
-        ${strategy.map(step => `
-        <div style="display:flex;align-items:flex-start;gap:7px;padding:4px 0;">
-          <span style="color:var(--jade-600);font-weight:700;flex-shrink:0;">›</span>
-          <span style="font-size:12.5px;color:var(--stone-600);">${escHtml(typeof step === 'string' ? step : JSON.stringify(step))}</span>
-        </div>`).join('')}
+      <div style="padding:10px 16px 4px;font-size:12.5px;color:var(--stone-600);border-bottom:1px solid var(--fog);">
+        For each predicted refusal, here is what you should do to address it.
       </div>
-    </div>`;
+      <div class="extract-card-body" style="padding:0;">`;
+
+    strategy.forEach((step, i) => {
+      // step can be a string OR an object
+      if (typeof step === 'string') {
+        html += `
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 16px;border-bottom:1px solid var(--fog);">
+          <span style="color:var(--jade-500);font-weight:700;flex-shrink:0;margin-top:2px;">›</span>
+          <span style="font-size:12.5px;color:var(--stone-600);">${escHtml(step)}</span>
+        </div>`;
+      } else {
+        const strats = step.recommended_strategies || [];
+        html += `
+        <div style="padding:14px 16px;border-bottom:1px solid var(--fog);${i%2===1?'background:var(--jade-50);':''}">
+          <strong style="font-size:13px;color:var(--ink);display:block;margin-bottom:4px;">
+            For: ${escHtml(step.refusal_type||'')}
+          </strong>
+          ${step.legal_basis ? `
+          <div style="font-size:11px;color:var(--stone-400);margin-bottom:8px;">
+            ${escHtml(step.legal_basis)}
+            ${step.tmep_section ? ` &nbsp;·&nbsp; TMEP §${escHtml(step.tmep_section)}` : ''}
+          </div>` : ''}
+          ${strats.map(st => `
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:3px 0;">
+            <span style="color:var(--jade-500);font-weight:700;flex-shrink:0;">›</span>
+            <span style="font-size:12.5px;color:var(--stone-600);">${escHtml(st)}</span>
+          </div>`).join('')}
+        </div>`;
+      }
+    });
+
+    html += `</div></div>`;
   }
 
-  // ── Agent 4: Application Improvements ──
+  /* ══════════════════════════════════════════
+     AGENT 4 — Application Improvements
+  ══════════════════════════════════════════ */
   if (improvements.length) {
     html += `
-    <div class="extract-card" style="margin-top:8px;">
+    <div class="extract-card" style="margin-top:10px;">
       <div class="extract-card-header">
-        <span class="extract-card-title">🛠 Agent 4 — Recommended Fixes (${improvements.length})</span>
+        <span class="extract-card-title">🛠 Step 4 — Specific Changes to Make to Your Application</span>
       </div>
-      <div class="extract-card-body" style="padding:0;">
-        ${improvements.map((imp, i) => {
-          const fixes = imp.recommended_fixes || {};
-          const sections = [
-            { label: 'Alternative Mark Names',       key: 'mark_suggestions',             icon: '🏷' },
-            { label: 'Goods & Services Improvements', key: 'goods_services_improvements',  icon: '📦' },
-            { label: 'Application Corrections',       key: 'application_corrections',      icon: '✏️' },
-            { label: 'Filing Strategy',               key: 'filing_strategy',              icon: '📋' },
-            { label: 'Documentation',                 key: 'documentation_recommendations',icon: '📄' },
-          ];
-          const sectHtml = sections.map(sec => {
-            const items = (fixes[sec.key] || []).filter(Boolean);
-            if (!items.length) return '';
-            return `
-            <div style="margin-top:8px;">
-              <p style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
-                        color:var(--stone-400);margin-bottom:5px;">${sec.icon} ${sec.label}</p>
-              ${items.map(it => `
-              <div style="display:flex;align-items:flex-start;gap:7px;padding:2px 0;">
-                <span style="color:var(--jade-500);font-weight:700;flex-shrink:0;">•</span>
-                <span style="font-size:12.5px;color:var(--jade-800);">${escHtml(String(it))}</span>
-              </div>`).join('')}
-            </div>`;
-          }).join('');
+      <div style="padding:10px 16px 4px;font-size:12.5px;color:var(--stone-600);border-bottom:1px solid var(--fog);">
+        Concrete edits and improvements your attorney or filing agent should make.
+      </div>
+      <div class="extract-card-body" style="padding:0;">`;
 
-          return `
-          <div style="padding:12px 14px;border-bottom:1px solid var(--fog);
-                      ${i%2===1?'background:var(--jade-50);':''}">
-            <strong style="font-size:13px;color:var(--ink);">
-              ${escHtml(imp.refusal_type || `Issue ${i+1}`)}
-            </strong>
-            ${sectHtml || '<p style="font-size:12px;color:var(--stone-400);margin-top:6px;">No specific fixes provided.</p>'}
-          </div>`;
-        }).join('')}
-      </div>
-    </div>`;
+    improvements.forEach((imp, i) => {
+      const fixes = imp.recommended_fixes || {};
+
+      const sections = [
+        { key:'mark_suggestions',              icon:'🏷', label:'Alternative Mark Names to Consider',    intro:'If the current mark is rejected, consider renaming it to one of these:' },
+        { key:'goods_services_improvements',   icon:'📦', label:'Goods & Services Description Changes', intro:'Update your goods/services description as follows:' },
+        { key:'application_corrections',       icon:'✏️', label:'Corrections Needed in the Application', intro:'The following fields or information need to be corrected or added:' },
+        { key:'filing_strategy',               icon:'📋', label:'Filing Strategy Advice',               intro:'Your filing agent should follow this strategy:' },
+        { key:'documentation_recommendations', icon:'📄', label:'Documents to Prepare',                 intro:'Prepare and attach the following documentation:' },
+      ];
+
+      const sectHtml = sections.map(sec => {
+        const items = (fixes[sec.key]||[]).filter(Boolean);
+        if (!items.length) return '';
+        return `
+        <div style="margin-top:12px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+                      color:var(--stone-400);margin-bottom:4px;">${sec.icon} ${sec.label}</div>
+          <p style="font-size:12px;color:var(--stone-400);margin-bottom:6px;font-style:italic;">${sec.intro}</p>
+          ${items.map(it => `
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;
+                      border-bottom:1px solid var(--fog);">
+            <span style="color:var(--jade-500);font-weight:700;flex-shrink:0;margin-top:1px;">•</span>
+            <span style="font-size:13px;color:var(--jade-800);font-weight:500;">${escHtml(String(it))}</span>
+          </div>`).join('')}
+        </div>`;
+      }).join('');
+
+      html += `
+      <div style="padding:14px 16px;border-bottom:1px solid var(--fog);${i%2===1?'background:var(--jade-50);':''}">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span style="font-size:18px;">🚫</span>
+          <strong style="font-size:13.5px;color:var(--ink);">Addressing: ${escHtml(imp.refusal_type||`Issue ${i+1}`)}</strong>
+        </div>
+        ${sectHtml || `<p style="font-size:12.5px;color:var(--stone-400);margin-top:8px;">No specific fixes provided for this issue.</p>`}
+      </div>`;
+    });
+
+    html += `</div></div>`;
   }
 
-  // ── Fallback if all agents empty ──
+  /* ── Fallback ── */
   if (!risks.length && !refusals.length && !strategy.length && !improvements.length) {
     html += `
-    <div class="extract-card" style="margin-top:8px;">
+    <div class="extract-card" style="margin-top:10px;">
       <div class="extract-card-body">
-        <p style="font-size:13px;color:var(--stone-400);">
-          TARA agents returned no structured output. Raw response:
-        </p>
+        <p style="font-size:13px;color:var(--stone-400);">TARA agents returned no structured output. Raw:</p>
         <pre style="font-size:11px;background:var(--mist);padding:10px;border-radius:6px;
                     overflow-x:auto;white-space:pre-wrap;word-break:break-all;margin-top:8px;">
-${escHtml(JSON.stringify(tara, null, 2).slice(0, 2000))}
-        </pre>
+${escHtml(JSON.stringify(tara,null,2).slice(0,2000))}</pre>
       </div>
     </div>`;
   }
 
-  const aiMsg = { id: uid(), role: "ai", richHtml: html, text: "[TARA Agent Analysis]", ts: Date.now() };
+  const aiMsg = { id:uid(), role:"ai", richHtml:html, text:"[TARA Agent Analysis]", ts:Date.now() };
   s.messages.push(aiMsg);
   appendMsg(aiMsg);
   save();
