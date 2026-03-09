@@ -723,35 +723,64 @@ async function generateLLMSummaryStreaming(llmJson) {
 }
 
 async function sendToTaraAI(llmJson) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 120000); // 120s — HF spaces can be slow
+  const session_hash = Math.random().toString(36).slice(2, 12);
 
   try {
-    const response = await fetch(
-      "https://shivam-99x-taraagents.hf.space/run/predict",
+    // Step 1 — Join the queue
+    const joinRes = await fetch(
+      "https://shivam-99x-taraagents.hf.space/queue/join",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fn_index: 0,  
-          data: [JSON.stringify(llmJson)]  // ✅ FIX 1: must be a JSON string, not object
-        }),
-        signal: controller.signal
+          fn_index: 0,
+          data: [JSON.stringify(llmJson)],
+          session_hash
+        })
       }
     );
 
-    clearTimeout(timeout);
+    if (!joinRes.ok) throw new Error(`Queue join failed: HTTP ${joinRes.status}`);
 
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    // Step 2 — Listen to the event stream for result
+    const evtSource = new EventSource(
+      `https://shivam-99x-taraagents.hf.space/queue/data?session_hash=${session_hash}`
+    );
 
-    const result = await response.json();
+    const result = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        evtSource.close();
+        reject(new Error("Timeout after 120s"));
+      }, 120000);
 
-    if (!result?.data?.length) throw new Error("Empty response from TARA API");
+      evtSource.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
 
-    // ✅ FIX 2: drill into the nested structure
-    const outer      = result.data[0];
-    const taraInner  = outer?.tara_analysis?.tara_analysis ?? outer?.tara_analysis ?? outer;
+        // Gradio sends: process_starts → process_generating → process_completed
+        if (msg.msg === "process_completed") {
+          clearTimeout(timer);
+          evtSource.close();
+          resolve(msg.output);
+        }
+        if (msg.msg === "queue_full") {
+          clearTimeout(timer);
+          evtSource.close();
+          reject(new Error("HF queue is full, try again shortly"));
+        }
+      };
 
+      evtSource.onerror = () => {
+        clearTimeout(timer);
+        evtSource.close();
+        reject(new Error("EventSource connection error"));
+      };
+    });
+
+    // Step 3 — Parse result (same as before)
+    if (!result?.data?.length) throw new Error("Empty output from TARA API");
+
+    const outer     = result.data[0];
+    const taraInner = outer?.tara_analysis?.tara_analysis ?? outer?.tara_analysis ?? outer;
     displayTaraAgentResults(taraInner);
 
   } catch (err) {
@@ -759,7 +788,7 @@ async function sendToTaraAI(llmJson) {
     if (!s) return;
     const aiMsg = {
       id: uid(), role: "ai",
-      text: err.name === "AbortError"
+      text: err.message.includes("Timeout")
         ? "⚠ TARA agent pipeline timed out (>120s). The Hugging Face space may be cold-starting."
         : `⚠ TARA agent pipeline error: ${err.message}`,
       ts: Date.now()
