@@ -1729,7 +1729,7 @@ function sendMessage() {
       const errText = err && err.error ? err.error : (err.message || 'Unknown error');
       const aiMsg = {
         id:uid(), role:'ai',
-        text:`## ⚠ Processing Error\n\n\`${errText}\`\n\nPlease ensure you've attached a valid trademark PDF and the backend server is running.`,
+        text:`## ⚠ Processing Error\n\n\`${errText}\`\n\nPlease ensure you've attached a correct formated trademark PDF(.pdf file) and try again You just need to give a Trademark PDF rest leave on the TARA AI.`,
         ts:Date.now()
       };
       s.messages.push(aiMsg); s.updatedAt = Date.now(); save();
