@@ -490,16 +490,12 @@ class PDFProcessor:
     # FIX — Format detector
     # Checks raw text for 'TEAS Plus' title (new format) vs
     # 'Input Field' table header (old PTO-1478 format).
-    # =========================================================================
+    
     def _detect_pdf_format(self, text: str) -> str:
-    """Returns 'teas_plus' or 'pto_1478'.
-    CRITICAL: Check 'Input Field' FIRST — many TEAS Plus applications are
-    filed on the PTO-1478 form so both strings appear. 'Input Field' is
-    the definitive layout marker.
-    """
-    if re.search(r'Input\s+Field', text, re.I):   # PTO-1478 table layout
+    
+    if re.search(r'Input\s+Field', text, re.I):   
         return 'pto_1478'
-    if re.search(r'TEAS\s+Plus', text, re.I):      # pure TEAS Plus
+    if re.search(r'TEAS\s+Plus', text, re.I):      
         return 'teas_plus'
     if TEAS_SERIAL_RE.search(text):
         return 'teas_plus'
@@ -1062,6 +1058,7 @@ def health():
 @app.get("/version")
 def version():
     return {"service": "trademark_pdf_extractor", "version": "1.0"}
+
 
 
 
