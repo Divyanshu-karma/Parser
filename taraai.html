@@ -1623,12 +1623,37 @@ function sendMessage() {
       s.messages.push(aiMsg);
       s.updatedAt = Date.now(); save();
 
-      appendMsg(aiMsg);
+      appendMsg(aiMsg);  
+
+
+      const llmInput = prepareLLMInput(data);  
+
+      const jsonPreviewMsg = {
+        id: uid(), role: "ai",
+        richHtml: `
+        <details>
+          <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--jade-700);
+                          padding:8px 12px;background:var(--jade-50);border:1px solid var(--jade-100);
+                          border-radius:var(--radius-sm);list-style:none;">
+            📤 JSON Sent to TARA Agents — click to expand
+          </summary>
+          <pre style="font-size:11px;background:var(--jade-900);color:#a8d5bb;
+                      padding:14px 16px;border-radius:0 0 var(--radius-sm) var(--radius-sm);
+                      overflow-x:auto;white-space:pre-wrap;word-break:break-all;margin:0;">
+      ${escHtml(JSON.stringify(llmInput, null, 2))}</pre>
+        </details>`,
+        text: "[TARA Input JSON]", ts: Date.now()
+      };
+      s.messages.push(jsonPreviewMsg);
+      appendMsg(jsonPreviewMsg);
+      save();
+
+
       removeFile();
       isTyping = false;
       updateSendBtn();
       document.getElementById('sessionLabel').textContent = 'Ready';
-      const llmInput = prepareLLMInput(data);
+      
       generateLLMSummaryStreaming(llmInput);
       sendToTaraAI(llmInput); 
     })
