@@ -7,6 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+<script type="module">
+  import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.min.js";
+  window.GradioClient = Client;
+</script>  
 <style>
   :root {
     --jade-900:#0d2b1f;--jade-800:#163d2c;--jade-700:#1e5239;--jade-600:#27664a;
@@ -721,65 +725,25 @@ async function generateLLMSummaryStreaming(llmJson) {
     save();
   }
 }
-
 async function sendToTaraAI(llmJson) {
-  const session_hash = Math.random().toString(36).slice(2, 12);
-
   try {
-    // Step 1 — Join the queue
-    const joinRes = await fetch(
-      "https://shivam-99x-taraagents.hf.space/queue/join",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fn_index: 0,
-          data: [JSON.stringify(llmJson)],
-          session_hash
-        })
-      }
-    );
+    // Wait for GradioClient module to load
+    let attempts = 0;
+    while (!window.GradioClient && attempts < 20) {
+      await new Promise(r => setTimeout(r, 300));
+      attempts++;
+    }
+    if (!window.GradioClient) throw new Error("Gradio client failed to load");
 
-    if (!joinRes.ok) throw new Error(`Queue join failed: HTTP ${joinRes.status}`);
+    const client = await window.GradioClient.connect("shivam-99x/TARAagents");
 
-    // Step 2 — Listen to the event stream for result
-    const evtSource = new EventSource(
-      `https://shivam-99x-taraagents.hf.space/queue/data?session_hash=${session_hash}`
-    );
-
-    const result = await new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        evtSource.close();
-        reject(new Error("Timeout after 120s"));
-      }, 120000);
-
-      evtSource.onmessage = (e) => {
-        const msg = JSON.parse(e.data);
-
-        // Gradio sends: process_starts → process_generating → process_completed
-        if (msg.msg === "process_completed") {
-          clearTimeout(timer);
-          evtSource.close();
-          resolve(msg.output);
-        }
-        if (msg.msg === "queue_full") {
-          clearTimeout(timer);
-          evtSource.close();
-          reject(new Error("HF queue is full, try again shortly"));
-        }
-      };
-
-      evtSource.onerror = () => {
-        clearTimeout(timer);
-        evtSource.close();
-        reject(new Error("EventSource connection error"));
-      };
+    const result = await client.predict("/analyze_trademark", {
+      report_json: JSON.stringify(llmJson)
     });
 
-    // Step 3 — Parse result (same as before)
     if (!result?.data?.length) throw new Error("Empty output from TARA API");
 
-    const outer     = result.data[0];
+    const outer = result.data[0];
     const taraInner = outer?.tara_analysis?.tara_analysis ?? outer?.tara_analysis ?? outer;
     displayTaraAgentResults(taraInner);
 
@@ -788,9 +752,7 @@ async function sendToTaraAI(llmJson) {
     if (!s) return;
     const aiMsg = {
       id: uid(), role: "ai",
-      text: err.message.includes("Timeout")
-        ? "⚠ TARA agent pipeline timed out (>120s). The Hugging Face space may be cold-starting."
-        : `⚠ TARA agent pipeline error: ${err.message}`,
+      text: `⚠ TARA agent pipeline error: ${err.message}`,
       ts: Date.now()
     };
     s.messages.push(aiMsg);
@@ -798,6 +760,7 @@ async function sendToTaraAI(llmJson) {
     save();
   }
 }
+
 
 function streamSummaryToChat(aiMsg, msgElement, text) {
   const s = getSession();
