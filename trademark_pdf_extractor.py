@@ -493,13 +493,13 @@ class PDFProcessor:
     
     def _detect_pdf_format(self, text: str) -> str:
     
-    if re.search(r'Input\s+Field', text, re.I):   
+        if re.search(r'Input\s+Field', text, re.I):   
+            return 'pto_1478'
+        if re.search(r'TEAS\s+Plus', text, re.I):      
+            return 'teas_plus'
+        if TEAS_SERIAL_RE.search(text):
+            return 'teas_plus'
         return 'pto_1478'
-    if re.search(r'TEAS\s+Plus', text, re.I):      
-        return 'teas_plus'
-    if TEAS_SERIAL_RE.search(text):
-        return 'teas_plus'
-    return 'pto_1478'
 
     # =========================================================================
     # FIX — TEAS Plus summary block extractor
@@ -1058,6 +1058,7 @@ def health():
 @app.get("/version")
 def version():
     return {"service": "trademark_pdf_extractor", "version": "1.0"}
+
 
 
 
