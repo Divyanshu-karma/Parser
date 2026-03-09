@@ -297,6 +297,11 @@ class PDFProcessor:
                         table = t.extract()
                         if table:
                             tables.append({"page": pno, "rows": table})
+                            safe_rows = [
+                                [str(c) if c is not None else None for c in row]
+                                for row in table
+                            ]
+                            tables.append({"page": pno, "rows": safe_rows})
                 except Exception:
                     pass
 
@@ -462,7 +467,11 @@ class PDFProcessor:
             return {'int': il, 'str': sl}
 
         if canonical == 'filing_basis':
+            # handles both "1(a)" and "SECTION 1(a)" cell values
             m = re.search(r'(1\(a\)|1\(b\)|44\(d\)|44\(e\)|66\(a\))', raw, re.I)
+            if m:
+                return m.group(1)
+            m = re.search(r'SECTION\s+(1\(a\)|1\(b\)|44\(d\)|44\(e\)|66\(a\))', raw, re.I)
             return m.group(1) if m else raw
 
         if canonical in ('standard_characters', 'uspto_generated_image'):
@@ -483,15 +492,18 @@ class PDFProcessor:
     # 'Input Field' table header (old PTO-1478 format).
     # =========================================================================
     def _detect_pdf_format(self, text: str) -> str:
-        """Returns 'teas_plus' or 'pto_1478'."""
-        if re.search(r'TEAS\s+Plus', text, re.I):
-            return 'teas_plus'
-        if re.search(r'Input\s+Field', text, re.I):
-            return 'pto_1478'
-        # Fallback: inline "Serial number:" key (TEAS Plus summary block)
-        if TEAS_SERIAL_RE.search(text):
-            return 'teas_plus'
+    """Returns 'teas_plus' or 'pto_1478'.
+    CRITICAL: Check 'Input Field' FIRST — many TEAS Plus applications are
+    filed on the PTO-1478 form so both strings appear. 'Input Field' is
+    the definitive layout marker.
+    """
+    if re.search(r'Input\s+Field', text, re.I):   # PTO-1478 table layout
         return 'pto_1478'
+    if re.search(r'TEAS\s+Plus', text, re.I):      # pure TEAS Plus
+        return 'teas_plus'
+    if TEAS_SERIAL_RE.search(text):
+        return 'teas_plus'
+    return 'pto_1478'
 
     # =========================================================================
     # FIX — TEAS Plus summary block extractor
@@ -920,12 +932,18 @@ async def call_analyze_backend(mark: str, goods: str, goods_class: Optional[str]
 # /extract endpoint
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _safe_json(data: dict) -> JSONResponse:
+    """Serializes via json.dumps first so non-standard types never crash FastAPI."""
+    return JSONResponse(json.loads(json.dumps(data, ensure_ascii=False, default=str)))
+
+
+
 @app.post("/extract")
 async def extract_pdf(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...)
 ):
-    if not file.filename.lower().endswith(".pdf") or file.content_type != "application/pdf":
+    if not file.filename.lower().endswith(".pdf"):
         return JSONResponse({"error": "only pdf allowed"}, status_code=400)
 
     contents = await file.read()
@@ -1026,7 +1044,7 @@ async def extract_pdf(
         except Exception:
             pass
 
-    return JSONResponse(result)
+    return _safe_json(result)
 # ─────────────────────────────────────────────────────────────────────────────
 # Static routes
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1044,5 +1062,6 @@ def health():
 @app.get("/version")
 def version():
     return {"service": "trademark_pdf_extractor", "version": "1.0"}
+
 
 
